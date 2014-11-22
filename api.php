@@ -7,7 +7,7 @@
 	\Slim\Slim::registerAutoloader();
 	
 	ORM::configure('mysql:host=localhost;port=3306;dbname=games');
-	ORM::configure('username','game');
+	ORM::configure('username','eframson');
 	ORM::configure('password','123123');
 	ORM::configure('logging', true);
 	ORM::configure('driver_options', array(PDO::MYSQL_ATTR_INIT_COMMAND => 'SET NAMES utf8'));
@@ -15,6 +15,7 @@
 	$app = new \Slim\Slim();
 
 	$app->get('/games', 'getGames');
+	$app->get('/games/', 'getGames');
 	$app->get('/games/:id',	'getGame');
 	$app->get('/games/search/:query', 'findGame');
 	$app->post('/games', 'addGame');

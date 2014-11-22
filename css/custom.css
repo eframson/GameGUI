@@ -27,6 +27,7 @@ body {
 	text-align: left;
 	width: 520px;
 	margin-left: 170px;
+	display: none;
 }
 
 .current-game .button-controls {
@@ -36,6 +37,18 @@ body {
 
 .current-game button {
 	display: inline;
+}
+
+.hidden {
+	display: none;
+}
+
+.all-games {
+	text-align: left;
+}
+
+.all-games .id-col{
+	text-align: center;
 }
 
 .clear {

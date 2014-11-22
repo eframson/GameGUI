@@ -7,7 +7,7 @@
 		<meta name="description" content="">
 		<meta name="author" content="">
 		<!--<link rel="icon" href="../../favicon.ico">-->
-		<title>Bootstrap 101 Template</title>
+		<title>Game GUI</title>
 
 		<!-- Bootstrap -->
 		<link href="css/bootstrap.min.css" rel="stylesheet">
@@ -40,12 +40,12 @@
 				<span class="icon-bar"></span>
 				<span class="icon-bar"></span>
 			  </button>
-			  <a class="navbar-brand" href="#">Project name</a>
+			  <a class="navbar-brand" href="#home" data-bind="click: setActiveTab">Game GUI</a>
 			</div>
 			<div class="collapse navbar-collapse">
 			  <ul class="nav navbar-nav">
-				<li class="active"><a href="#">Home</a></li>
-				<li class=""><a href="#">TODO: Show all</a></li>
+				<li class="" data-bind="css { active: activeTab() == 'home' }" ><a href="#home" data-bind="click: setActiveTab">Home</a></li>
+				<li class="" data-bind="css { active: activeTab() == 'all' }"><a href="#all" data-bind="click: setActiveTab">Show All</a></li>
 				<!--<li><a href="#about">About</a></li>
 				<li><a href="#contact">Contact</a></li>-->
 			  </ul>
@@ -58,10 +58,11 @@
 		<div class="container">
 
 		  <div class="starter-template">
-			<!--<h1>Bootstrap starter template</h1>
-			<p class="lead">Use this document as a way to quickly start any new project.<br> All you get is this text and a mostly barebones HTML document.</p>-->
 			<div class="ajax-notice bg-success" data-bind="showSuccess: mostRecentAjaxSuccess()"></div>
 			<div class="ajax-notice bg-danger" data-bind="showFailure: mostRecentAjaxFailure()"></div>
+
+			<div class="loading-indicator hidden" data-bind="visible: showLoading(), css: { hidden: false }" ><img src="img/ajax-loader.gif" /></div>
+
 			<div data-bind="showEditPanel: currentGameId, with: currentGame" class="current-game">				
 				<form role="form-horizontal">
 					<div class="form-group current-game-form">
@@ -84,18 +85,6 @@
 						<input type="text" class="form-control" id="edit_platform" placeholder="Platform" data-bind="value: platform">
 						<div class="clear"></div>
 					</div>
-					<!-- <div class="form-group">
-						<label for="exampleInputPassword1">Password</label>
-						<input type="password" class="form-control" id="exampleInputPassword1" placeholder="Password">
-					</div>
-					<div class="form-group">
-						<label for="exampleInputFile">File input</label>
-						<input type="file" id="exampleInputFile">
-						<p class="help-block">Example block-level help text here.</p>
-					</div>
-					<div class="checkbox">
-						<label><input type="checkbox"> Check me out</label>
-					</div> -->
 					<div class="button-controls">
 						<button type="button" class="btn btn-danger" data-bind="click: $parent.deleteGame">Delete</button>
 						<button type="button" class="btn btn-default" data-bind="click: $parent.updateGame">Submit</button>
@@ -103,6 +92,25 @@
 				</form>
 				
 			</div>
+
+			<div class="all-games hidden" data-bind="visible: gameList, css: { hidden: false }">
+				<table class="table table-striped table-bordered">
+					<tr>
+						<th class="id-col">ID</th>
+						<th>Name</th>
+						<th>Source</th>
+					</tr>
+					<!-- ko foreach: gameList -->
+					<tr class="single-game">
+						<td class="id-col" data-bind="text: id"></td>
+						<td data-bind="text: title"></td>
+						<td data-bind="text: source"></td>
+					</tr>
+					<!-- /ko -->
+				</table>
+			</div>
+
+
 		  </div>
 
 		</div><!-- /.container -->
@@ -114,6 +122,7 @@
 		<script src="https://ajax.googleapis.com/ajax/libs/jquery/1.11.1/jquery.min.js"></script>
 		<script src="js/bootstrap.min.js"></script>
 		<script src="js/knockout-3.2.0.min.js"></script>
+		<!--<script src="js/knockout-3.2.0.debug.js"></script>-->
 		<!--<script src="js/typeahead-0.10.5.js"></script>-->
 		<script src="js/jquery-ui.min.js"></script>
 		<script src="js/custom.js"></script>
