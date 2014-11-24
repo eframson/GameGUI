@@ -7,7 +7,7 @@ $(document).ready(function(){
 		this.currentGame = ko.observable();
 		this.searchTerm = ko.observable();
 		this.activeTab = ko.observable("home");
-		this.gameList = ko.observable();
+		this.gameList = ko.observableArray();
 		this.showLoading = ko.observable(0);
 		this.mostRecentAjaxSuccess = ko.observable("");
 		this.mostRecentAjaxFailure = ko.observable("");
@@ -159,6 +159,14 @@ $(document).ready(function(){
 			var elem = event.toElement,
 				tabTarget = elem.getAttribute("href").replace(/^#/, '');
 			this.activeTab(tabTarget);
+		}
+		
+		this.deleteGameFromList = function(game, event){
+			self.gameList.remove(game);
+		}
+		
+		this.editGameFromList = function(game, event){
+			console.log(arguments);
 		}
 
 		this.activeTab.subscribe(function(activeTab){

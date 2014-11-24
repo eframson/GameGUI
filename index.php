@@ -93,15 +93,20 @@
 				
 			</div>
 
-			<div class="all-games hidden" data-bind="visible: gameList, css: { hidden: false }">
+			<div class="all-games hidden" data-bind="visible: gameList() && gameList().length > 0, css: { hidden: false }">
 				<table class="table table-striped table-bordered">
 					<tr>
+						<th class="ctrls-column"></th>
 						<th class="id-col">ID</th>
 						<th>Name</th>
 						<th>Source</th>
 					</tr>
 					<!-- ko foreach: gameList -->
 					<tr class="single-game">
+						<td>
+							<span data-bind="click: $root.deleteGameFromList" class="delete-ctrl glyphicon glyphicon-trash"></span>
+							<span data-bind="click: $root.editGameFromList" class="edit-ctrl glyphicon glyphicon-pencil"></span>
+						</td>
 						<td class="id-col" data-bind="text: id"></td>
 						<td data-bind="text: title"></td>
 						<td data-bind="text: source"></td>

@@ -51,6 +51,15 @@ body {
 	text-align: center;
 }
 
+.all-games .ctrls-column {
+	width: 50px;
+}
+
+.all-games .delete-ctrl,
+.all-games .edit-ctrl {
+	cursor: pointer;
+}
+
 .clear {
 	clear: both;
 }
