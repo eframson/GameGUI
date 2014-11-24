@@ -111,6 +111,38 @@
 						<td data-bind="text: title"></td>
 						<td data-bind="text: source"></td>
 					</tr>
+					<tr class="inline-edit">
+						<td colspan="4">
+							<div class="slider-container">
+								<form role="form-horizontal">
+									<div class="form-group current-game-form">
+										<label for="id">Id</label>
+										<input disabled="disabled" type="text" class="form-control" placeholder="Id" data-bind="value: id">
+										<div class="clear"></div>
+									</div>
+									<div class="form-group">
+										<label for="title">Title</label>
+										<input type="text" class="form-control" id="edit_title" placeholder="Title" data-bind="value: title">
+										<div class="clear"></div>
+									</div>
+									<div class="form-group">
+										<label for="source">Source</label>
+										<input type="text" class="form-control" id="edit_source" placeholder="Source" data-bind="value: source">
+										<div class="clear"></div>
+									</div>
+									<div class="form-group">
+										<label for="platform">Platform</label>
+										<input type="text" class="form-control" id="edit_platform" placeholder="Platform" data-bind="value: platform">
+										<div class="clear"></div>
+									</div>
+									<div class="button-controls">
+										<button type="button" class="btn btn-danger" data-bind="click: $parent.deleteGame">Delete</button>
+										<button type="button" class="btn btn-default" data-bind="click: $parent.updateGame">Submit</button>
+									</div>
+								</form>
+							</div>
+						</td>
+					</tr>
 					<!-- /ko -->
 				</table>
 			</div>

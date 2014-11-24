@@ -43,6 +43,10 @@ body {
 	display: none;
 }
 
+.inline-edit, .slider-container {
+	display: none;
+}
+
 .all-games {
 	text-align: left;
 }

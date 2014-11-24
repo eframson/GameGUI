@@ -156,7 +156,7 @@ $(document).ready(function(){
 
 		this.setActiveTab = function(viewModel, event){
 			event.preventDefault();
-			var elem = event.toElement,
+			var elem = event.target,
 				tabTarget = elem.getAttribute("href").replace(/^#/, '');
 			this.activeTab(tabTarget);
 		}
@@ -166,7 +166,22 @@ $(document).ready(function(){
 		}
 		
 		this.editGameFromList = function(game, event){
-			console.log(arguments);
+			//console.log(arguments);
+			var $elem = $(event.target),
+				$row = $elem.parents(".single-game"),
+				$next = $row.next(),
+				$slider = $next.find(".slider-container"),
+				elemDuration = 200;
+
+			if( $slider.is(":visible") ){
+				$slider.slideUp(elemDuration, function(){
+					$next.hide()
+				});
+			}else{
+				$next.show(0, function(){
+					$slider.slideDown(elemDuration);
+				});
+			}
 		}
 
 		this.activeTab.subscribe(function(activeTab){
