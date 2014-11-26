@@ -11,6 +11,8 @@ $(document).ready(function(){
 		this.showLoading = ko.observable(0);
 		this.mostRecentAjaxSuccess = ko.observable("");
 		this.mostRecentAjaxFailure = ko.observable("");
+		this.selectedGames = ko.observableArray();
+		this.allSelected = ko.observable(0);
 		
 		$('.search').autocomplete({
 			source: function( request, response ){
@@ -163,6 +165,7 @@ $(document).ready(function(){
 		
 		this.deleteGameFromList = function(game, event){
 			self.gameList.remove(game);
+			self.selectedGames.remove(game);
 		}
 		
 		this.editGameFromList = function(game, event){
@@ -181,6 +184,48 @@ $(document).ready(function(){
 				$next.show(0, function(){
 					$slider.slideDown(elemDuration);
 				});
+			}
+		}
+
+		this.rowClicked = function(game, event){
+			return true;
+			var $elem = $(event.target);
+			if ($elem.data() && $elem.data("bind").match(/click:/)){
+				//If we're actually clicking on something, don't select row
+				return true;
+			}else{
+				self.toggleGameSelect(game, event);
+			}
+			console.log(self.selectedGames());
+		}
+
+		this.toggleGameSelect = function(game, event){
+			console.log(arguments);
+			if(self.selectedGames.indexOf(game) == -1){
+				self.selectedGames.push(game);
+			}else{
+				self.selectedGames.remove(game);
+			}
+			console.log(self.selectedGames());
+		}
+
+		this.addHover = function(game, event){
+			var $elem = $(event.currentTarget);
+			$elem.addClass("hover");
+		}
+
+		this.removeHover = function(game, event){
+			var $elem = $(event.currentTarget);
+			$elem.removeClass("hover");
+		}
+
+		this.toggleSelectAll = function(viewModel, event){
+			if( self.allSelected() == 0 ){
+				self.selectedGames( self.gameList() );
+				self.allSelected(1);
+			}else{
+				self.selectedGames.removeAll();
+				self.allSelected(0);
 			}
 		}
 

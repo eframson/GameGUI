@@ -47,6 +47,15 @@ body {
 	display: none;
 }
 
+.all-games table.table tbody tr.hover > td {
+	cursor: pointer
+}
+
+.all-games table.table tbody tr.hover > td {
+	/*background-color: #e3e3f2;*/
+	background-color: #eeeeea;
+}
+
 .all-games {
 	text-align: left;
 }

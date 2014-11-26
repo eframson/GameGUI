@@ -95,55 +95,61 @@
 
 			<div class="all-games hidden" data-bind="visible: gameList() && gameList().length > 0, css: { hidden: false }">
 				<table class="table table-striped table-bordered">
-					<tr>
-						<th class="ctrls-column"></th>
-						<th class="id-col">ID</th>
-						<th>Name</th>
-						<th>Source</th>
-					</tr>
-					<!-- ko foreach: gameList -->
-					<tr class="single-game">
-						<td>
-							<span data-bind="click: $root.deleteGameFromList" class="delete-ctrl glyphicon glyphicon-trash"></span>
-							<span data-bind="click: $root.editGameFromList" class="edit-ctrl glyphicon glyphicon-pencil"></span>
-						</td>
-						<td class="id-col" data-bind="text: id"></td>
-						<td data-bind="text: title"></td>
-						<td data-bind="text: source"></td>
-					</tr>
-					<tr class="inline-edit">
-						<td colspan="4">
-							<div class="slider-container">
-								<form role="form-horizontal">
-									<div class="form-group current-game-form">
-										<label for="id">Id</label>
-										<input disabled="disabled" type="text" class="form-control" placeholder="Id" data-bind="value: id">
-										<div class="clear"></div>
-									</div>
-									<div class="form-group">
-										<label for="title">Title</label>
-										<input type="text" class="form-control" id="edit_title" placeholder="Title" data-bind="value: title">
-										<div class="clear"></div>
-									</div>
-									<div class="form-group">
-										<label for="source">Source</label>
-										<input type="text" class="form-control" id="edit_source" placeholder="Source" data-bind="value: source">
-										<div class="clear"></div>
-									</div>
-									<div class="form-group">
-										<label for="platform">Platform</label>
-										<input type="text" class="form-control" id="edit_platform" placeholder="Platform" data-bind="value: platform">
-										<div class="clear"></div>
-									</div>
-									<div class="button-controls">
-										<button type="button" class="btn btn-danger" data-bind="click: $parent.deleteGame">Delete</button>
-										<button type="button" class="btn btn-default" data-bind="click: $parent.updateGame">Submit</button>
-									</div>
-								</form>
-							</div>
-						</td>
-					</tr>
-					<!-- /ko -->
+					<thead>
+						<tr>
+							<th class="ctrls-column"></th>
+							<th class="id-col">ID</th>
+							<th>Name</th>
+							<th>Source</th>
+							<th><input type="checkbox" data-bind="value: 1, click: toggleSelectAll, checked: allSelected() == 1"></th>
+						</tr>
+					</thead>
+					<tbody>
+						<!-- ko foreach: gameList -->
+						<tr data-bind="click: $root.rowClicked, event: { mouseenter: $root.addHover, mouseleave: $root.removeHover }" class="single-game">
+							<td>
+								<span data-bind="click: $root.deleteGameFromList" class="delete-ctrl glyphicon glyphicon-trash"></span>
+								<span data-bind="click: $root.editGameFromList" class="edit-ctrl glyphicon glyphicon-pencil"></span>
+							</td>
+							<td class="id-col" data-bind="text: id"></td>
+							<td data-bind="text: title"></td>
+							<td data-bind="text: source"></td>
+							<td><input type="checkbox" data-bind="attr: { value: $data.id }, checked: $root.selectedGames"></td>
+						</tr>
+						<tr class="inline-edit">
+							<td colspan="5">
+								<div class="slider-container">
+									<form role="form-horizontal">
+										<div class="form-group current-game-form">
+											<label for="id">Id</label>
+											<input disabled="disabled" type="text" class="form-control" placeholder="Id" data-bind="value: id">
+											<div class="clear"></div>
+										</div>
+										<div class="form-group">
+											<label for="title">Title</label>
+											<input type="text" class="form-control" id="edit_title" placeholder="Title" data-bind="value: title">
+											<div class="clear"></div>
+										</div>
+										<div class="form-group">
+											<label for="source">Source</label>
+											<input type="text" class="form-control" id="edit_source" placeholder="Source" data-bind="value: source">
+											<div class="clear"></div>
+										</div>
+										<div class="form-group">
+											<label for="platform">Platform</label>
+											<input type="text" class="form-control" id="edit_platform" placeholder="Platform" data-bind="value: platform">
+											<div class="clear"></div>
+										</div>
+										<div class="button-controls">
+											<button type="button" class="btn btn-danger" data-bind="">Cancel</button>
+											<button type="button" class="btn btn-default" data-bind="click: $parent.updateGame">Submit</button>
+										</div>
+									</form>
+								</div>
+							</td>
+						</tr>
+						<!-- /ko -->
+					</tbody>
 				</table>
 			</div>
 
