@@ -30,6 +30,21 @@
 		  <script src="https://oss.maxcdn.com/respond/1.4.2/respond.min.js"></script>
 		<![endif]-->
 	</head>
+	<!-- @TODOs
+		- Make row-level delete buttons delete first, then remove row if successful
+		- Move search bar into page content area, and make filter "show all" results, rather than perform a search each time
+		- Preload data when page loads instead of querying multiple times (possibly moot if previous todo is addressed)
+		- Make "inline-edit" cancel buttons slideup as if edit button were clicked again
+		- Refactor "show all" as table-like grid-based system instead of actual table
+		- Clean up/reorganize custom.js (and maybe api.php)
+		- Make sure data is synced up (e.g. - if individual edit fields change and game is updated, "show all" results should reflect that)
+		- Put in some content in "home" so one tab's content can be easily distinguished from another
+		- How about "New Game" functionality!? :)
+		- Create a favicon
+		- Make Cmd/Ctrl + F a shortcut for search rather than default Chrome/FF functionality
+		- Add pagination to "show all" table
+		- Move "mass action" controls somewhere so they don't mess up position of table items on screen when controls are first displayed
+	-->
 	<body>
 		<div class="navbar navbar-inverse navbar-fixed-top" role="navigation">
 		  <div class="container">
