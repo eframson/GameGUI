@@ -13,6 +13,10 @@ $(document).ready(function(){
 		this.mostRecentAjaxFailure = ko.observable("");
 		this.selectedGames = ko.observableArray();
 		this.allSelected = ko.observable(0);
+		this.massUpdateData = ko.observable({
+			platform: undefined,
+			source: undefined
+		});
 		
 		$('.search').autocomplete({
 			source: function( request, response ){
@@ -80,13 +84,13 @@ $(document).ready(function(){
 			
 		}.bind(this));
 		
-		this.updateGame = function(){
+		this.updateGame = function(game){
 			$.ajax({
 				type: 'PUT',
 				contentType: 'application/json',
-				url: 'api.php/games/' + self.currentGameId(),
+				url: 'api.php/games/' + game.id,
 				dataType: "json",
-				data: JSON.stringify(self.currentGame()),
+				data: JSON.stringify(game),
 				success: function(response, textStatus, jqXHR){
 					console.log(response);
 					self.mostRecentAjaxSuccess(response);
@@ -118,11 +122,11 @@ $(document).ready(function(){
 			});
 		}
 		
-		this.deleteGame = function(){
+		this.deleteGame = function(game){
 			$.ajax({
 				type: 'DELETE',
 				contentType: 'application/json',
-				url: 'api.php/games/' + self.currentGameId(),
+				url: 'api.php/games/' + game.id,
 				dataType: "json",
 				success: function(response, textStatus, jqXHR){
 					console.log(response);
@@ -157,6 +161,7 @@ $(document).ready(function(){
 		}
 
 		this.setActiveTab = function(viewModel, event){
+			console.log(arguments);
 			event.preventDefault();
 			var elem = event.target,
 				tabTarget = elem.getAttribute("href").replace(/^#/, '');
@@ -165,7 +170,7 @@ $(document).ready(function(){
 		
 		this.deleteGameFromList = function(game, event){
 			self.gameList.remove(game);
-			self.selectedGames.remove(game);
+			self.selectedGames.remove(game.id);
 		}
 		
 		this.editGameFromList = function(game, event){
@@ -188,13 +193,13 @@ $(document).ready(function(){
 		}
 
 		this.rowClicked = function(game, event){
-			return true;
-			var $elem = $(event.target);
-			if ($elem.data() && $elem.data("bind").match(/click:/)){
-				//If we're actually clicking on something, don't select row
+			var $currentTarget = $(event.currentTarget),
+				$target = $(event.target);
+			if ( ($target.data() && $target.data("bind") && $target.data("bind").match(/click:/)) || $target.is("input") ){
+				//We're clicking on something that has its own click handler
 				return true;
 			}else{
-				self.toggleGameSelect(game, event);
+				$currentTarget.find("input:checkbox").click();
 			}
 			console.log(self.selectedGames());
 		}
@@ -219,15 +224,61 @@ $(document).ready(function(){
 			$elem.removeClass("hover");
 		}
 
-		this.toggleSelectAll = function(viewModel, event){
-			if( self.allSelected() == 0 ){
-				self.selectedGames( self.gameList() );
-				self.allSelected(1);
-			}else{
-				self.selectedGames.removeAll();
-				self.allSelected(0);
-			}
+		this.massUpdate = function(viewModel, event){
+			$.ajax({
+				type: 'PUT',
+				contentType: 'application/json',
+				url: 'api.php/games/' + JSON.stringify(self.selectedGames()),
+				dataType: "json",
+				data: JSON.stringify(self.massUpdateData()),
+				success: function(response, textStatus, jqXHR){
+					$('#myModal').modal('hide');
+					console.log(response);
+					self.mostRecentAjaxSuccess(response);
+				},
+				error: function(jqXHR, textStatus, errorThrown){
+					console.log(jqXHR);
+					console.log(textStatus);
+					console.log(errorThrown);
+				}
+			});
 		}
+
+		this.clearSelection = function(viewModel, event){
+			self.selectedGames.removeAll();
+			self.allSelected(0);
+		}
+
+		this.allSelected.subscribe(function(val){
+			console.log("changed!");
+			if(val && val != 0){
+				console.log("select all");
+				self.selectedGames( ko.utils.arrayMap( self.gameList(), function(item){ return item.id; } ) );
+				//self.selectedGames.push("11");
+			}else{
+				console.log("remove all");
+				self.selectedGames.removeAll();
+			}
+			
+		}.bind(this));
+
+		this.selectedGames.subscribe(function(selectedGameArray){
+
+			var $elem = $(".mass-actions"),
+				$td = $elem.children("td"),
+				$slider = $td.children(".slider-container"),
+				elemDuration = 100;
+
+			if(selectedGameArray.length && selectedGameArray.length > 0){
+				$elem.show(0, function(){
+					$slider.slideDown(elemDuration);
+				});
+			}else{
+				$slider.slideUp(elemDuration, function(){
+					$elem.hide()
+				});
+			}
+		}.bind(this));
 
 		this.activeTab.subscribe(function(activeTab){
 			
@@ -286,6 +337,11 @@ $(document).ready(function(){
 		};
 	};
 	
-	ko.applyBindings(new Games());
+	var gameViewModel = new Games();
+	ko.applyBindings(gameViewModel);
+
+	//Initialize correct tab based on hash
+	var hash = window.location.hash;
+	gameViewModel.activeTab(hash.replace(/^#/, ''));
 	
 });

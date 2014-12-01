@@ -55,6 +55,36 @@
 		  </div>
 		</div>
 
+		<!-- Modal -->
+		<div class="modal fade" id="myModal" tabindex="-1" role="dialog" aria-labelledby="myModalLabel" aria-hidden="true">
+		  <div class="modal-dialog">
+		    <div class="modal-content">
+		      <div class="modal-header">
+		        <button type="button" class="close" data-dismiss="modal"><span aria-hidden="true">&times;</span><span class="sr-only">Close</span></button>
+		        <h4 class="modal-title" id="myModalLabel">Mass Update</h4>
+		      </div>
+		      <div class="modal-body">
+		        <form role="form-horizontal" data-bind="with: massUpdateData">
+					<div class="form-group">
+						<label for="source">Source</label>
+						<input type="text" class="form-control" id="edit_source" placeholder="Source" data-bind="value: source">
+						<div class="clear"></div>
+					</div>
+					<div class="form-group">
+						<label for="platform">Platform</label>
+						<input type="text" class="form-control" id="edit_platform" placeholder="Platform" data-bind="value: platform">
+						<div class="clear"></div>
+					</div>
+				</form>
+		      </div>
+		      <div class="modal-footer">
+		        <button type="button" class="btn btn-default" data-dismiss="modal">Cancel</button>
+		        <button type="button" class="btn btn-primary" data-bind="click: massUpdate, text: 'Update ' + selectedGames().length + ' game(s)'"></button>
+		      </div>
+		    </div>
+		  </div>
+		</div>
+
 		<div class="container">
 
 		  <div class="starter-template">
@@ -101,10 +131,20 @@
 							<th class="id-col">ID</th>
 							<th>Name</th>
 							<th>Source</th>
-							<th><input type="checkbox" data-bind="value: 1, click: toggleSelectAll, checked: allSelected() == 1"></th>
+							<th>Platform</th>
+							<th><input type="checkbox" data-bind="value: 1, checked: allSelected"></th>
 						</tr>
 					</thead>
 					<tbody>
+						<tr class="mass-actions">
+							<td colspan="6">
+								<div class="slider-container">
+									<button type="button" class="btn btn-danger" data-bind="text: 'Delete ' + selectedGames().length + ' game(s)'"></button>
+									<button type="button" class="btn btn-default" data-toggle="modal" data-target="#myModal">Mass Update</button>
+									<button type="button" class="btn btn-default" data-bind="click: clearSelection">Clear Selection</button>
+								</div>
+							</td>
+						</tr>
 						<!-- ko foreach: gameList -->
 						<tr data-bind="click: $root.rowClicked, event: { mouseenter: $root.addHover, mouseleave: $root.removeHover }" class="single-game">
 							<td>
@@ -114,10 +154,11 @@
 							<td class="id-col" data-bind="text: id"></td>
 							<td data-bind="text: title"></td>
 							<td data-bind="text: source"></td>
+							<td data-bind="text: platform"></td>
 							<td><input type="checkbox" data-bind="attr: { value: $data.id }, checked: $root.selectedGames"></td>
 						</tr>
 						<tr class="inline-edit">
-							<td colspan="5">
+							<td colspan="6">
 								<div class="slider-container">
 									<form role="form-horizontal">
 										<div class="form-group current-game-form">
@@ -127,17 +168,17 @@
 										</div>
 										<div class="form-group">
 											<label for="title">Title</label>
-											<input type="text" class="form-control" id="edit_title" placeholder="Title" data-bind="value: title">
+											<input type="text" class="form-control" placeholder="Title" data-bind="value: title">
 											<div class="clear"></div>
 										</div>
 										<div class="form-group">
 											<label for="source">Source</label>
-											<input type="text" class="form-control" id="edit_source" placeholder="Source" data-bind="value: source">
+											<input type="text" class="form-control" placeholder="Source" data-bind="value: source">
 											<div class="clear"></div>
 										</div>
 										<div class="form-group">
 											<label for="platform">Platform</label>
-											<input type="text" class="form-control" id="edit_platform" placeholder="Platform" data-bind="value: platform">
+											<input type="text" class="form-control" placeholder="Platform" data-bind="value: platform">
 											<div class="clear"></div>
 										</div>
 										<div class="button-controls">

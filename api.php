@@ -32,9 +32,15 @@
 	}
 	
 	function getGame($id){
+		$ids = json_decode(($id));
+
+		if(!is_array($ids)){
+			$ids = array($ids);
+		}
+
 		$results = Model::factory('GameEntity')
-				    ->where('id', $id)
-				    ->find_one();
+				    ->where_in('id', $ids)
+				    ->find_many();
 					
 		showResults($results);
 	}
@@ -80,28 +86,43 @@
 	}
 	
 	function updateGame($id){
-		//@TODO Consider making this an Idiorm thing so we don't have to load the model first (again)?
+		//@TODO Consider making this an Idiorm thing (what did I mean by that??) so we don't have to load the model first (again)?
 		$gameData = getData();
+
+		$ids = json_decode(($id));
+
+		if(!is_array($ids)){
+			$ids = array($ids);
+		}
 		
-		$game = Model::factory('GameEntity')->find_one($gameData["id"]);
-		
-		foreach ($gameData as $prop => $value) {
-			if($prop == "id"){
-				continue;
+		$games = Model::factory('GameEntity')->where_in('id', $ids)->find_many($ids);
+		$result_array = array();
+		$hadErrorsFlag = false;
+
+		foreach( $games as $game ){
+
+			foreach ($gameData as $prop => $value) {
+				if($prop == "id"){
+					continue;
+				}
+				$game->$prop = $value;
 			}
-			$game->$prop = $value;
+			
+			try {
+				$response = $game->save();
+			}catch( Exception $e){
+				$hadErrorsFlag = true;
+				$response = $e->getMessge();
+			}
+
+			$result_array[$game->id] = $response;
+
 		}
-		
-		try {
-			$response = $game->save();
-		}catch( Exception $e){
-			$response = $e->getMessge();
-		}
-		
-		if( $response == 1 ){
-			showSuccess("Updated successfully");
+
+		if( !$hadErrorsFlag ){
+			showSuccess("All objects updated successfully");
 		}else{
-			showError("Object could not be updated");
+			showError("Some objects could not be updated",$result_array);
 		}
 		
 	}
@@ -143,21 +164,27 @@
 		
 	}
 	
-	function showError($msg){
+	function showError($msg, $detailArray=null){
 		$output=array(
 			"error"=>"1",
 			"success"=>"0",
 			"msg"=>$msg
 		);
+		if($detailArray){
+			$output["detailArray"]=$detailArray;
+		}
 		echo json_encode($output);
 	}
 	
-	function showSuccess($msg){
+	function showSuccess($msg, $object=null){
 		$output=array(
 			"error"=>"0",
 			"success"=>"1",
 			"msg"=>$msg
 		);
+		if($object){
+			$output["successObject"]=$object->as_array();
+		}
 		echo json_encode($output);
 	}
 	

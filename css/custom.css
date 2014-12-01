@@ -43,7 +43,7 @@ body {
 	display: none;
 }
 
-.inline-edit, .slider-container {
+.inline-edit, .slider-container, .mass-actions {
 	display: none;
 }
 
