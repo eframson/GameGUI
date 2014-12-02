@@ -135,78 +135,75 @@
 						<button type="button" class="btn btn-default" data-bind="click: $parent.updateGame">Submit</button>
 					</div>
 				</form>
-				
 			</div>
 
 			<div class="all-games hidden" data-bind="visible: gameList() && gameList().length > 0, css: { hidden: false }">
-				<table class="table table-striped table-bordered">
-					<thead>
-						<tr>
-							<th class="ctrls-column"></th>
-							<th class="id-col">ID</th>
-							<th>Name</th>
-							<th>Source</th>
-							<th>Platform</th>
-							<th><input type="checkbox" data-bind="value: 1, checked: allSelected"></th>
-						</tr>
-					</thead>
-					<tbody>
-						<tr class="mass-actions">
-							<td colspan="6">
-								<div class="slider-container">
-									<button type="button" class="btn btn-danger" data-bind="text: 'Delete ' + selectedGames().length + ' game(s)'"></button>
-									<button type="button" class="btn btn-default" data-toggle="modal" data-target="#myModal">Mass Update</button>
-									<button type="button" class="btn btn-default" data-bind="click: clearSelection">Clear Selection</button>
-								</div>
-							</td>
-						</tr>
-						<!-- ko foreach: gameList -->
-						<tr data-bind="click: $root.rowClicked, event: { mouseenter: $root.addHover, mouseleave: $root.removeHover }" class="single-game">
-							<td>
-								<span data-bind="click: $root.deleteGameFromList" class="delete-ctrl glyphicon glyphicon-trash"></span>
-								<span data-bind="click: $root.editGameFromList" class="edit-ctrl glyphicon glyphicon-pencil"></span>
-							</td>
-							<td class="id-col" data-bind="text: id"></td>
-							<td data-bind="text: title"></td>
-							<td data-bind="text: source"></td>
-							<td data-bind="text: platform"></td>
-							<td><input type="checkbox" data-bind="attr: { value: $data.id }, checked: $root.selectedGames"></td>
-						</tr>
-						<tr class="inline-edit">
-							<td colspan="6">
-								<div class="slider-container">
-									<form role="form-horizontal">
-										<div class="form-group current-game-form">
-											<label for="id">Id</label>
-											<input disabled="disabled" type="text" class="form-control" placeholder="Id" data-bind="value: id">
-											<div class="clear"></div>
-										</div>
-										<div class="form-group">
-											<label for="title">Title</label>
-											<input type="text" class="form-control" placeholder="Title" data-bind="value: title">
-											<div class="clear"></div>
-										</div>
-										<div class="form-group">
-											<label for="source">Source</label>
-											<input type="text" class="form-control" placeholder="Source" data-bind="value: source">
-											<div class="clear"></div>
-										</div>
-										<div class="form-group">
-											<label for="platform">Platform</label>
-											<input type="text" class="form-control" placeholder="Platform" data-bind="value: platform">
-											<div class="clear"></div>
-										</div>
-										<div class="button-controls">
-											<button type="button" class="btn btn-danger" data-bind="">Cancel</button>
-											<button type="button" class="btn btn-default" data-bind="click: $parent.updateGame">Submit</button>
-										</div>
-									</form>
-								</div>
-							</td>
-						</tr>
-						<!-- /ko -->
-					</tbody>
-				</table>
+				<div class="row table-meta">
+					<div class="col-md-3 pagination-controls"></div>
+					<div class="col-md-6">
+						<div class="slider-container">
+							<div class="mass-actions">
+								<button type="button" class="btn btn-danger" data-bind="text: 'Delete ' + selectedGames().length + ' game(s)'"></button>
+								<button type="button" class="btn btn-default" data-toggle="modal" data-target="#myModal">Mass Update</button>
+								<button type="button" class="btn btn-default" data-bind="click: clearSelection">Clear Selection</button>
+							</div>
+						</div>
+					</div>
+					<div class="col-md-3 filter-container">
+						<input autocomplete="off" placeholder="Filter" title="Filter" class="form-control filter" type="text">
+					</div>
+				</div>
+
+				<div class="row thead">
+					<div class="col-md-1 ctrls-column"></div>
+					<div class="col-md-1 id-col">ID</div>
+					<div class="col-md-5">Name</div>
+					<div class="col-md-2">Source</div>
+					<div class="col-md-2">Platform</div>
+					<div class="col-md-1"><input type="checkbox" data-bind="value: 1, checked: allSelected"></div>
+				</div>
+
+				<!-- ko foreach: gameList -->
+				<div class="row single-game" data-bind="event: { mouseenter: $root.addHover, mouseleave: $root.removeHover }">
+					<div class="col-md-1">
+						<span data-bind="click: $root.deleteGameFromList" class="delete-ctrl glyphicon glyphicon-trash"></span>
+						<span data-bind="click: $root.editGameFromList" class="edit-ctrl glyphicon glyphicon-pencil"></span>
+					</div>
+					<div class="col-md-1 id-col" data-bind="text: id"></div>
+					<div class="col-md-5" data-bind="text: title"></div>
+					<div class="col-md-2" data-bind="text: source"></div>
+					<div class="col-md-2" data-bind="text: platform">Platform</div>
+					<div class="col-md-1"><input type="checkbox" data-bind="attr: { value: $data.id }, checked: $root.selectedGames"></div>
+				</div>
+				<div class="row inline-edit">
+					<form role="form-horizontal">
+						<div class="form-group current-game-form">
+							<label for="id">Id</label>
+							<input disabled="disabled" type="text" class="form-control" placeholder="Id" data-bind="value: id">
+							<div class="clear"></div>
+						</div>
+						<div class="form-group">
+							<label for="title">Title</label>
+							<input type="text" class="form-control" placeholder="Title" data-bind="value: title">
+							<div class="clear"></div>
+						</div>
+						<div class="form-group">
+							<label for="source">Source</label>
+							<input type="text" class="form-control" placeholder="Source" data-bind="value: source">
+							<div class="clear"></div>
+						</div>
+						<div class="form-group">
+							<label for="platform">Platform</label>
+							<input type="text" class="form-control" placeholder="Platform" data-bind="value: platform">
+							<div class="clear"></div>
+						</div>
+						<div class="button-controls">
+							<button type="button" class="btn btn-danger" data-bind="">Cancel</button>
+							<button type="button" class="btn btn-default" data-bind="click: $parent.updateGame">Submit</button>
+						</div>
+					</form>
+				</div>
+				<!-- /ko -->
 			</div>
 
 

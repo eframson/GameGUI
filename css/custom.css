@@ -43,16 +43,33 @@ body {
 	display: none;
 }
 
-.inline-edit, .slider-container, .mass-actions {
+.inline-edit, .mass-actions {
 	display: none;
 }
 
-.all-games table.table tbody tr.hover > td {
-	cursor: pointer
+.all-games .row {
+	padding: 10px 0;
+	border-bottom: solid #636363 1px;
 }
 
-.all-games table.table tbody tr.hover > td {
-	/*background-color: #e3e3f2;*/
+.all-games .row.thead {
+	background-color: #f5f5f5;
+	padding-bottom: 4px;
+}
+
+.all-games .row.table-meta .filter-container {
+	padding-right: 0;
+}
+
+.all-games .row.thead > div {
+	font-weight: bold;
+}
+
+.all-games .row.single-game {
+	
+}
+
+.all-games div.row.hover {
 	background-color: #eeeeea;
 }
 
@@ -60,17 +77,21 @@ body {
 	text-align: left;
 }
 
-.all-games .id-col{
-	text-align: center;
-}
-
-.all-games .ctrls-column {
-	width: 50px;
-}
-
 .all-games .delete-ctrl,
 .all-games .edit-ctrl {
 	cursor: pointer;
+}
+
+.all-games .row.single-game input[type='checkbox'] {
+    -webkit-appearance:none;
+    width:20px;
+    height:20px;
+    background:white;
+    border-radius:5px;
+    border:2px solid #555;
+}
+.all-games .row.single-game input[type='checkbox']:checked {
+    background: #abd;
 }
 
 .clear {

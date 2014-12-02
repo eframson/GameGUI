@@ -177,18 +177,13 @@ $(document).ready(function(){
 			//console.log(arguments);
 			var $elem = $(event.target),
 				$row = $elem.parents(".single-game"),
-				$next = $row.next(),
-				$slider = $next.find(".slider-container"),
+				$slider = $row.next(),
 				elemDuration = 200;
-
-			if( $slider.is(":visible") ){
-				$slider.slideUp(elemDuration, function(){
-					$next.hide()
-				});
+			console.log($slider);
+			if( !$slider.is(":visible") ){
+				$slider.show('slide', { direction: 'up' }, elemDuration);
 			}else{
-				$next.show(0, function(){
-					$slider.slideDown(elemDuration);
-				});
+				$slider.hide('slide', { direction: 'up' }, elemDuration);
 			}
 		}
 
@@ -264,19 +259,13 @@ $(document).ready(function(){
 
 		this.selectedGames.subscribe(function(selectedGameArray){
 
-			var $elem = $(".mass-actions"),
-				$td = $elem.children("td"),
-				$slider = $td.children(".slider-container"),
-				elemDuration = 100;
+			var $slider = $(".mass-actions"),
+				elemDuration = 200;
 
 			if(selectedGameArray.length && selectedGameArray.length > 0){
-				$elem.show(0, function(){
-					$slider.slideDown(elemDuration);
-				});
+				$slider.show('slide', {direction: 'down'}, elemDuration);
 			}else{
-				$slider.slideUp(elemDuration, function(){
-					$elem.hide()
-				});
+				$slider.hide('slide', {direction: 'down'}, elemDuration);
 			}
 		}.bind(this));
 
