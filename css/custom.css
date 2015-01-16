@@ -47,6 +47,16 @@ body {
 	display: none;
 }
 
+.home .row {
+	margin-bottom: 20px;
+}
+
+.home .home-section {
+	border: 2px solid #eee;
+	border-radius: 5px;
+	padding: 10px;
+}
+
 .all-games .row {
 	padding: 10px 0;
 	border-bottom: solid #636363 1px;

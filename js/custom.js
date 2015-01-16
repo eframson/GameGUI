@@ -141,9 +141,27 @@ $(document).ready(function(){
 			});
 		}
 
+		this.showHome = function(){
+
+				self.showLoading(1);
+
+				/*$.ajax({
+					dataType: "json",
+					url: 'api.php/games/',
+					//data: data,
+					success: function(response){
+						console.log(response);
+						self.gameList(response.results)
+
+						self.showLoading(0);
+					}
+				});*/
+				self.showLoading(0);
+
+		}
+
 		this.showAll = function(){
 
-				self.currentGameId(false);
 				self.showLoading(1);
 
 				$.ajax({
@@ -161,10 +179,10 @@ $(document).ready(function(){
 		}
 
 		this.setActiveTab = function(viewModel, event){
-			console.log(arguments);
 			event.preventDefault();
 			var elem = event.target,
 				tabTarget = elem.getAttribute("href").replace(/^#/, '');
+			window.location.hash = tabTarget;
 			this.activeTab(tabTarget);
 		}
 		
@@ -270,19 +288,21 @@ $(document).ready(function(){
 		}.bind(this));
 
 		this.activeTab.subscribe(function(activeTab){
-			
-			//Clear out currently set stuff
-			//@TODO put this in function or something...
-			self.gameList(undefined);
-			self.currentGameId(undefined);
+			this.resetVisibleUI();
 
 			if(activeTab=="home"){
-				console.log("do home stuff");
+				this.showHome();
 			}else if (activeTab=="all"){
 				this.showAll();
 			}
 			
 		}.bind(this));
+
+		this.resetVisibleUI = function(){
+			self.currentGameId(false);
+			self.gameList(undefined);
+			self.currentGameId(undefined);
+		}
 		
 		ko.bindingHandlers.showSuccess = {
 		    init: function(element, valueAccessor) {

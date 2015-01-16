@@ -21,6 +21,7 @@
 		<!--<link href="css/jquery-ui.theme.min.css" rel="stylesheet">-->
 				
 		<!-- Theme customizations -->
+		<link href="css/slidebars.css" rel="stylesheet">
 		<link href="css/custom.css" rel="stylesheet">
 
 		<!-- HTML5 Shim and Respond.js IE8 support of HTML5 elements and media queries -->
@@ -44,9 +45,10 @@
 		- Make Cmd/Ctrl + F a shortcut for search rather than default Chrome/FF functionality
 		- Add pagination to "show all" table
 		- Move "mass action" controls somewhere so they don't mess up position of table items on screen when controls are first displayed
+		- When a search result is clicked, open it in panel instead of the body of the whole everything
 	-->
 	<body>
-		<div class="navbar navbar-inverse navbar-fixed-top" role="navigation">
+		<div class="navbar navbar-inverse navbar-fixed-top" role="navigation" id="sb-site">
 		  <div class="container">
 			<div class="navbar-header">
 			  <button type="button" class="navbar-toggle collapsed" data-toggle="collapse" data-target=".navbar-collapse">
@@ -103,10 +105,24 @@
 		<div class="container">
 
 		  <div class="starter-template">
+
 			<div class="ajax-notice bg-success" data-bind="showSuccess: mostRecentAjaxSuccess()"></div>
 			<div class="ajax-notice bg-danger" data-bind="showFailure: mostRecentAjaxFailure()"></div>
 
 			<div class="loading-indicator hidden" data-bind="visible: showLoading(), css: { hidden: false }" ><img src="img/ajax-loader.gif" /></div>
+
+			<div class="home" data-bind="visible: activeTab() == 'home'">
+				<div class="row">
+					<div class="home-section col-md-5">To-Play Summary (show top 5, date added to list, "add note" button)</div>
+					<div class="col-md-2"></div>
+					<div class="home-section col-md-5">Useful Controls (add game button, and...?)</div>
+				</div>
+				<div class="row">
+					<div class="home-section col-md-5">Recently Added</div>
+					<div class="col-md-2"></div>
+					<div class="home-section col-md-5">Bottom right (lol, what content goes here?)</div>
+				</div>
+			</div>
 
 			<div data-bind="showEditPanel: currentGameId, with: currentGame" class="current-game">				
 				<form role="form-horizontal">
@@ -140,7 +156,7 @@
 			<div class="all-games hidden" data-bind="visible: gameList() && gameList().length > 0, css: { hidden: false }">
 				<div class="row table-meta">
 					<div class="col-md-3 pagination-controls"></div>
-					<div class="col-md-6">
+					<div class="col-md-4">
 						<div class="slider-container">
 							<div class="mass-actions">
 								<button type="button" class="btn btn-danger" data-bind="text: 'Delete ' + selectedGames().length + ' game(s)'"></button>
@@ -149,7 +165,12 @@
 							</div>
 						</div>
 					</div>
-					<div class="col-md-3 filter-container">
+					<div class="col-md-1"></div>
+					<div class="col-md-1 newgame-container">
+						<button type="button" class="btn btn-default" data-bind="">New Game</button>
+					</div>
+					<div class="col-md-1"></div>
+					<div class="col-md-2 filter-container">
 						<input autocomplete="off" placeholder="Filter" title="Filter" class="form-control filter" type="text">
 					</div>
 				</div>
@@ -221,6 +242,10 @@
 		<!--<script src="js/knockout-3.2.0.debug.js"></script>-->
 		<!--<script src="js/typeahead-0.10.5.js"></script>-->
 		<script src="js/jquery-ui.min.js"></script>
+
+		<!-- Other jQuery Plugins/Libraries -->
+		<script src="js/slidebars.js"></script>
+
 		<script src="js/custom.js"></script>
 		<!-- IE10 viewport hack for Surface/desktop Windows 8 bug -->
 		<!--<script src="js/ie10-viewport-bug-workaround.js"></script>-->
