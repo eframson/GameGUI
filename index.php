@@ -21,7 +21,6 @@
 		<!--<link href="css/jquery-ui.theme.min.css" rel="stylesheet">-->
 				
 		<!-- Theme customizations -->
-		<link href="css/slidebars.css" rel="stylesheet">
 		<link href="css/custom.css" rel="stylesheet">
 
 		<!-- HTML5 Shim and Respond.js IE8 support of HTML5 elements and media queries -->
@@ -48,7 +47,7 @@
 		- When a search result is clicked, open it in panel instead of the body of the whole everything
 	-->
 	<body>
-		<div class="navbar navbar-inverse navbar-fixed-top" role="navigation" id="sb-site">
+		<div class="navbar navbar-inverse navbar-fixed-top" role="navigation">
 		  <div class="container">
 			<div class="navbar-header">
 			  <button type="button" class="navbar-toggle collapsed" data-toggle="collapse" data-target=".navbar-collapse">
@@ -244,7 +243,6 @@
 		<script src="js/jquery-ui.min.js"></script>
 
 		<!-- Other jQuery Plugins/Libraries -->
-		<script src="js/slidebars.js"></script>
 
 		<script src="js/custom.js"></script>
 		<!-- IE10 viewport hack for Surface/desktop Windows 8 bug -->
