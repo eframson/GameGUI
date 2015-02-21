@@ -117,7 +117,7 @@
 				
 				try{
 					$game->save();
-					$response = $game;
+					$response = $game->as_array();
 				}catch( Exception $e){
 					$hadErrorsFlag = true;
 					$response = $e->getMessage();
@@ -138,18 +138,44 @@
 	}
 	
 	function deleteGame($id){
+	
+		$ids = json_decode(($id));
 
-		try {
-			$game = Model::factory('GameEntity')->find_one($id);
-			$response = $game->delete();
-		}catch( Exception $e){
-			$response = $e->getMessage();
+		if(!is_array($ids)){
+			$ids = array($ids);
 		}
+
+		$result_array = array();
+		$hadErrorsFlag = false;
 		
-		if( $response == 1 ){
-			showSuccess("Deleted successfully");
+		try {
+			$games = Model::factory('GameEntity')->where_in('id', $ids)->find_many($ids);
+		}catch( Exception $e){
+			$hadErrorsFlag = true;
+		}
+
+		if(!$hadErrorsFlag){
+			foreach( $games as $game ){
+			
+				$game_id = $game->id;
+				
+				try{
+					$response = $game->delete();
+				}catch( Exception $e){
+					$hadErrorsFlag = true;
+					$response = $e->getMessage();
+				}
+
+				$result_array[$game_id] = $response;
+			}
+
+			if( !$hadErrorsFlag ){
+				showSuccess("All objects deleted successfully",$result_array);
+			}else{
+				showError("Some objects could not be deleted",$result_array);
+			}
 		}else{
-			showError("Object could not be deleted: " . $response);
+			showError($e->getMessage());
 		}
 	}
 	
@@ -193,7 +219,11 @@
 			"msg"=>$msg
 		);
 		if($object){
-			$output["successObject"]=$object->as_array();
+			if(!is_array($object)){
+				$output["successObject"]=$object->as_array();
+			}else{
+				$output["successObject"]=$object;
+			}
 		}
 		echo json_encode($output);
 	}

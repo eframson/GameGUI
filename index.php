@@ -193,7 +193,7 @@
 					<div class="col-md-5">
 						<div class="slider-container">
 							<div class="mass-actions">
-								<button type="button" class="btn btn-danger" data-bind="text: 'Delete ' + selectedGames().length + ' game(s)'"></button>
+								<button type="button" class="btn btn-danger" data-bind="click: massDelete, text: 'Delete ' + selectedGames().length + ' game(s)'"></button>
 								<button type="button" class="btn btn-default" data-target="massupdate" data-bind="click: showModal">Mass Update</button>
 								<button type="button" class="btn btn-default" data-bind="click: clearSelection">Clear Selection</button>
 							</div>
