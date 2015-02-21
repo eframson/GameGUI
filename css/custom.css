@@ -2,6 +2,14 @@ body {
   padding-top: 50px;
 }
 
+button:focus {
+	outline: 0 !important;
+}
+
+.modal-content {
+	display: none;
+}
+
 .ajax-notice {
 	display: none;
 	margin-bottom: 10px;
@@ -12,31 +20,31 @@ body {
   text-align: center;
 }
 
+.navbar-nav {
+	width: 1040px;
+}
+
+.navbar-collapse {
+	float: left;
+	width: 1000px;
+}
+
 .navbar-collapse .search {
 	margin-top: 8px;
 	width: 350px;
-	float: right;
+}
+
+.navbar-collapse .new-game-button-container {
+	margin-right: 10px;
+}
+
+.navbar-collapse .new-game-button-container button {
+	margin-top: 8px;
 }
 
 .navbar-collapse #container {
 	display: block;
 	position: relative;
-}
-
-.current-game {
-	text-align: left;
-	width: 520px;
-	margin-left: 170px;
-	display: none;
-}
-
-.current-game .button-controls {
-	/*padding-left: 480px;*/
-	float: right;
-}
-
-.current-game button {
-	display: inline;
 }
 
 .hidden {
@@ -57,6 +65,23 @@ body {
 	padding: 10px;
 }
 
+.all-games .table-meta div.pagination-controls {
+	padding-top: 9px;
+	padding-left: 0px;
+}
+
+.all-games .table-meta div.pagination-controls .page-label {
+	font-size: 14px;
+	vertical-align: top;
+}
+
+.all-games .table-meta div.pagination-controls .page-control {
+	font-size: 20px;
+	background: transparent;
+	border: none;
+	padding: 0;
+}
+
 .all-games .row {
 	padding: 10px 0;
 	border-bottom: solid #636363 1px;
@@ -67,19 +92,20 @@ body {
 	padding-bottom: 4px;
 }
 
-.all-games .row.table-meta .filter-container {
-	padding-right: 0;
-}
-
 .all-games .row.thead > div {
 	font-weight: bold;
+	cursor: pointer;
+}
+
+.all-games .row.table-meta .filter-container {
+	padding-right: 0;
 }
 
 .all-games .row.single-game {
 	
 }
 
-.all-games div.row.hover {
+.all-games div.row.single-game:hover {
 	background-color: #eeeeea;
 }
 
@@ -92,16 +118,26 @@ body {
 	cursor: pointer;
 }
 
-.all-games .row.single-game input[type='checkbox'] {
+.all-games .row.thead div{
+	padding-top: 5px;
+}
+
+.all-games .row.thead div.select-all {
+	padding-top: 0px;
+}
+
+.all-games .row input[type='checkbox'] {
     -webkit-appearance:none;
     width:20px;
     height:20px;
     background:white;
     border-radius:5px;
     border:2px solid #555;
+    outline: 0;
 }
-.all-games .row.single-game input[type='checkbox']:checked {
-    background: #abd;
+.all-games .row input[type='checkbox']:checked {
+    /*background: #abd;*/
+    background: #555;
 }
 
 .clear {

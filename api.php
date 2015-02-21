@@ -26,6 +26,7 @@
 	
 	function getGames(){
 		$results = Model::factory('GameEntity')
+				->order_by_asc('title')
 				->find_many();
 
 		showResults($results);
@@ -75,18 +76,18 @@
 		try {
 			$response = $game->save();
 		}catch( Exception $e){
-			$response = $e->getMessge();
+			$response = $e->getMessage();
 		}
 		
 		if( $response == 1 ){
-			showSuccess("Created successfully");
+			showSuccess("Created successfully",$game);
 		}else{
 			showError("Object could not be created");
 		}
 	}
 	
 	function updateGame($id){
-		//@TODO Consider making this an Idiorm thing (what did I mean by that??) so we don't have to load the model first (again)?
+
 		$gameData = getData();
 
 		$ids = json_decode(($id));
@@ -94,52 +95,61 @@
 		if(!is_array($ids)){
 			$ids = array($ids);
 		}
-		
-		$games = Model::factory('GameEntity')->where_in('id', $ids)->find_many($ids);
+
 		$result_array = array();
 		$hadErrorsFlag = false;
-
-		foreach( $games as $game ){
-
-			foreach ($gameData as $prop => $value) {
-				if($prop == "id"){
-					continue;
-				}
-				$game->$prop = $value;
-			}
-			
-			try {
-				$response = $game->save();
-			}catch( Exception $e){
-				$hadErrorsFlag = true;
-				$response = $e->getMessge();
-			}
-
-			$result_array[$game->id] = $response;
-
+		
+		try {
+			$games = Model::factory('GameEntity')->where_in('id', $ids)->find_many($ids);
+		}catch( Exception $e){
+			$hadErrorsFlag = true;
 		}
 
-		if( !$hadErrorsFlag ){
-			showSuccess("All objects updated successfully");
+		if(!$hadErrorsFlag){
+			foreach( $games as $game ){
+
+				foreach ($gameData as $prop => $value) {
+					if($prop == "id"){
+						continue;
+					}
+					$game->$prop = $value;
+				}
+				
+				try{
+					$game->save();
+					$response = $game;
+				}catch( Exception $e){
+					$hadErrorsFlag = true;
+					$response = $e->getMessage();
+				}
+
+				$result_array[$game->id] = $response;
+			}
+
+			if( !$hadErrorsFlag ){
+				showSuccess("All objects updated successfully",$result_array);
+			}else{
+				showError("Some objects could not be updated",$result_array);
+			}
 		}else{
-			showError("Some objects could not be updated",$result_array);
+			showError($e->getMessage());
 		}
 		
 	}
 	
 	function deleteGame($id){
-		$game = Model::factory('GameEntity')->find_one($id);
-		
+
 		try {
+			$game = Model::factory('GameEntity')->find_one($id);
 			$response = $game->delete();
 		}catch( Exception $e){
-			$response = $e->getMessge();
+			$response = $e->getMessage();
 		}
 		
 		if( $response == 1 ){
 			showSuccess("Deleted successfully");
 		}else{
-			showError("Object could not be deleted");
+			showError("Object could not be deleted: " . $response);
 		}
 	}
 	

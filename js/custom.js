@@ -5,10 +5,12 @@ $(document).ready(function(){
 		var self = this;
 		this.currentGameId = ko.observable();
 		this.currentGame = ko.observable();
+		this.newGame = ko.observable(createNewEmptyGame());
 		this.searchTerm = ko.observable();
-		this.activeTab = ko.observable("home");
+		this.activeTab = ko.observable();
 		this.gameList = ko.observableArray();
-		this.showLoading = ko.observable(0);
+		this.overviewDataStore = ko.observableArray();
+		this.showLoading = ko.observable(1);
 		this.mostRecentAjaxSuccess = ko.observable("");
 		this.mostRecentAjaxFailure = ko.observable("");
 		this.selectedGames = ko.observableArray();
@@ -17,6 +19,15 @@ $(document).ready(function(){
 			platform: undefined,
 			source: undefined
 		});
+		this.pageSize = ko.observable(25);
+		this.currentGameListPage = ko.observable();
+		this.currentGameListSorting = ko.observable({ column: "title", dir: "asc"});
+		this.sortNullsLast = ko.observable(true);
+		this.activeRequests = ko.observable(0);
+
+		this.temporaryGameObject = undefined;
+
+		window.location.hash = "home";
 		
 		$('.search').autocomplete({
 			source: function( request, response ){
@@ -74,6 +85,7 @@ $(document).ready(function(){
 					'api.php/games/' + newProductId,
 					function(data){
 						if( data.results && data.results[0] ){
+							console.log(data.results[0]);
 							self.currentGame(data.results[0]);
 						}
 					}
@@ -83,17 +95,26 @@ $(document).ready(function(){
 			}
 			
 		}.bind(this));
+
+		this.ajax = function(ajaxOpts){
+			ajaxOpts.complete = function(jqXHR, textStatus){
+				self.activeRequests( self.activeRequests() - 1 );
+			}
+			self.activeRequests( self.activeRequests() + 1 );
+			$.ajax(ajaxOpts);
+		}
 		
 		this.updateGame = function(game){
-			$.ajax({
+			self.ajax({
 				type: 'PUT',
 				contentType: 'application/json',
 				url: 'api.php/games/' + game.id,
 				dataType: "json",
 				data: JSON.stringify(game),
 				success: function(response, textStatus, jqXHR){
+					self.hideModal();
 					console.log(response);
-					self.mostRecentAjaxSuccess(response);
+					self.mostRecentAjaxSuccess(response.msg);
 				},
 				error: function(jqXHR, textStatus, errorThrown){
 					console.log(jqXHR);
@@ -103,16 +124,20 @@ $(document).ready(function(){
 			});
 		}
 		
-		this.newGame = function(){
-			$.ajax({
+		this.createGame = function(){
+			self.ajax({
 				type: 'POST',
 				contentType: 'application/json',
-				url: 'api.php/games/' + self.currentGameId(),
+				url: 'api.php/games',
 				dataType: "json",
-				data: JSON.stringify(self.currentGame()),
+				data: JSON.stringify(self.newGame()),
 				success: function(response, textStatus, jqXHR){
+					self.addGameToLocalObjects(response.successObject);
+					self.applySortingToDataStore();
+					self.hideModal();
 					console.log(response);
-					self.mostRecentAjaxSuccess(response);
+					self.mostRecentAjaxSuccess(response.msg);
+					self.newGame(createNewEmptyGame())
 				},
 				error: function(jqXHR, textStatus, errorThrown){
 					console.log(jqXHR);
@@ -121,22 +146,56 @@ $(document).ready(function(){
 				}
 			});
 		}
+
+		this.deleteGameFromModal = function(game){
+			self.deleteGame(game, function(response, textStatus, jqXHR){
+				console.log(response);
+				console.log(game);
+				self.mostRecentAjaxSuccess(response.msg);
+				self.removeGameFromLocalObjects(self.temporaryGameObject);
+				self.applySortingToDataStore();
+				self.hideModal();
+				console.log(self.overviewDataStore().length);
+			});
+		}
+
+		this.deleteGameFromList = function(game, event){
+			self.deleteGame(game, function(response, textStatus, jqXHR){
+				self.mostRecentAjaxSuccess(response.msg);
+				self.removeGameFromLocalObjects(game);
+				self.applySortingToDataStore();
+			});
+		}
+
+		this.removeGameFromLocalObjects = function(game){
+			console.log(game);
+			self.overviewDataStore.remove(game);
+			self.gameList.remove(game);
+			self.selectedGames.remove(game.id);
+			self.currentGameId(undefined);
+		}
+
+		this.addGameToLocalObjects = function(game){
+			self.overviewDataStore.push(game);
+		}
 		
-		this.deleteGame = function(game){
-			$.ajax({
+		this.deleteGame = function(game, onSuccess, onFailure){
+			self.ajax({
 				type: 'DELETE',
 				contentType: 'application/json',
 				url: 'api.php/games/' + game.id,
 				dataType: "json",
 				success: function(response, textStatus, jqXHR){
-					console.log(response);
-					self.mostRecentAjaxSuccess(response);
-					self.currentGameId(undefined);
+					if(typeof onSuccess === 'function'){
+						onSuccess(response, textStatus, jqXHR);
+					}
 				},
 				error: function(jqXHR, textStatus, errorThrown){
-					console.log(jqXHR);
-					console.log(textStatus);
-					console.log(errorThrown);
+					if(typeof onFailure === 'function'){
+						onFailure(jqXHR, textStatus, errorThrown);
+					}else{
+						self.standardOnFailureHandler(jqXHR, textStatus, errorThrown);
+					}
 				}
 			});
 		}
@@ -144,8 +203,9 @@ $(document).ready(function(){
 		this.showHome = function(){
 
 				self.showLoading(1);
+				self.gameList(undefined);
 
-				/*$.ajax({
+				/*self.ajax({
 					dataType: "json",
 					url: 'api.php/games/',
 					//data: data,
@@ -162,20 +222,12 @@ $(document).ready(function(){
 
 		this.showAll = function(){
 
-				self.showLoading(1);
+			self.showLoading(1);
 
-				$.ajax({
-					dataType: "json",
-					url: 'api.php/games/',
-					//data: data,
-					success: function(response){
-						console.log(response);
-						self.gameList(response.results)
+			self.currentGameListPage(1);
+			self.loadCurrentGameListPage();
 
-						self.showLoading(0);
-					}
-				});
-
+			self.showLoading(0);
 		}
 
 		this.setActiveTab = function(viewModel, event){
@@ -186,27 +238,13 @@ $(document).ready(function(){
 			this.activeTab(tabTarget);
 		}
 		
-		this.deleteGameFromList = function(game, event){
-			self.gameList.remove(game);
-			self.selectedGames.remove(game.id);
-		}
-		
 		this.editGameFromList = function(game, event){
-			//console.log(arguments);
-			var $elem = $(event.target),
-				$row = $elem.parents(".single-game"),
-				$slider = $row.next(),
-				elemDuration = 200;
-			console.log($slider);
-			if( !$slider.is(":visible") ){
-				$slider.show('slide', { direction: 'up' }, elemDuration);
-			}else{
-				$slider.hide('slide', { direction: 'up' }, elemDuration);
-			}
+			self.temporaryGameObject = game;
+			self.currentGameId(game.id);
 		}
 
-		this.rowClicked = function(game, event){
-			var $currentTarget = $(event.currentTarget),
+		/*this.rowClicked = function(game, event){
+			var $currentTarget = $(event.target),
 				$target = $(event.target);
 			if ( ($target.data() && $target.data("bind") && $target.data("bind").match(/click:/)) || $target.is("input") ){
 				//We're clicking on something that has its own click handler
@@ -215,7 +253,7 @@ $(document).ready(function(){
 				$currentTarget.find("input:checkbox").click();
 			}
 			console.log(self.selectedGames());
-		}
+		}*/
 
 		this.toggleGameSelect = function(game, event){
 			console.log(arguments);
@@ -227,25 +265,15 @@ $(document).ready(function(){
 			console.log(self.selectedGames());
 		}
 
-		this.addHover = function(game, event){
-			var $elem = $(event.currentTarget);
-			$elem.addClass("hover");
-		}
-
-		this.removeHover = function(game, event){
-			var $elem = $(event.currentTarget);
-			$elem.removeClass("hover");
-		}
-
 		this.massUpdate = function(viewModel, event){
-			$.ajax({
+			self.ajax({
 				type: 'PUT',
 				contentType: 'application/json',
 				url: 'api.php/games/' + JSON.stringify(self.selectedGames()),
 				dataType: "json",
 				data: JSON.stringify(self.massUpdateData()),
 				success: function(response, textStatus, jqXHR){
-					$('#myModal').modal('hide');
+					self.hideModal();
 					console.log(response);
 					self.mostRecentAjaxSuccess(response);
 				},
@@ -257,9 +285,149 @@ $(document).ready(function(){
 			});
 		}
 
+		this.showModal = function(viewModel, event){
+			var $elem = $(event.target);
+
+			if($elem.data("target") == "newgame"){
+				self.newGame(createNewEmptyGame());
+			}
+
+			$('#myModal .modal-content.' + $elem.data("target")).show();
+			$('#myModal').modal('show');
+		}
+
+		this.hideModal = function(viewModel, event){
+			self.currentGameId(undefined);
+			$('#myModal').modal('hide');
+			$('#myModal .modal-content').hide();
+		}
+
 		this.clearSelection = function(viewModel, event){
 			self.selectedGames.removeAll();
 			self.allSelected(0);
+		}
+
+		this.initOverviewDataStore = function(){
+
+				self.ajax({
+					dataType: "json",
+					url: 'api.php/games/',
+					//data: data,
+					success: function(response){
+						console.log(response);
+						self.overviewDataStore(response.results)
+
+						self.showLoading(0);
+					}
+				});
+
+		}
+
+		this.getPageFromDataStore = function(page_no){
+			page_no = page_no || 1;
+			end_no = self.pageSize() * page_no;
+			end_no = (end_no < self.overviewDataStore().length) ? end_no : self.overviewDataStore().length ;
+			start_no = end_no - self.pageSize();
+			start_no = (start_no < 1) ? 0 : start_no ;
+			return self.overviewDataStore.slice(start_no, end_no);
+		}
+
+		this.updateSortingField = function(viewModel, event){
+			var $elem = $(event.target);
+
+			if($elem.is("span")){
+				$elem = $elem.parent();
+			}
+
+			var $icon = $elem.children(".sorting-icon"),
+				sortField = $elem.data("target"),
+				asc_icon = "glyphicon-triangle-top",
+				desc_icon = "glyphicon-triangle-bottom";
+
+			console.log($elem);
+
+			if( sortField != self.currentGameListSorting().column ){
+				$(".all-games .thead .sorting-icon").removeClass(asc_icon).removeClass(desc_icon);
+			}
+
+			if( $icon.hasClass(desc_icon) ){
+				$icon.removeClass(desc_icon);
+				$icon.addClass(asc_icon);
+				self.currentGameListSorting({ column: sortField, dir: "asc" });
+			}else if( $icon.hasClass(asc_icon) ){
+				$icon.removeClass(asc_icon);
+				$icon.addClass(desc_icon);
+				self.currentGameListSorting({ column: sortField, dir: "desc" });
+			}else{
+				$icon.addClass(asc_icon);
+				self.currentGameListSorting({ column: sortField, dir: "asc" });
+			}
+
+			this.applySortingToDataStore();
+		}
+
+		this.applySortingToDataStore = function(){
+			var sortField = self.currentGameListSorting().column;
+			var sortDir = self.currentGameListSorting().dir;
+			
+			self.overviewDataStore.sort(function(left, right){
+				var leftField = left[sortField];
+				var rightField = right[sortField];
+
+				if(sortField == "id"){
+					leftField = parseInt(leftField);
+					rightField = parseInt(rightField);
+				}else{
+
+					leftField = leftField || "";
+					rightField = rightField || "";
+
+					if(self.sortNullsLast() == true){
+						leftField = (leftField == "") ? "zzzzzzzzzzz" : leftField ;
+						rightField = (rightField == "") ? "zzzzzzzzzzz" : rightField ;
+					}
+				}
+
+				if(sortDir == "asc"){
+					return leftField == rightField ? 0 : (leftField < rightField ? -1 : 1) ;
+				}else{
+					return leftField == rightField ? 0 : (leftField > rightField ? -1 : 1) ;
+				}
+			});
+
+			this.loadCurrentGameListPage();
+		}
+
+		this.prevGameListPage = function(viewModel, event){
+			self.currentGameListPage( ( self.currentGameListPage() > 1 ? self.currentGameListPage() - 1 : 1) )  ;
+			self.loadCurrentGameListPage();
+		}
+
+		this.nextGameListPage = function(viewModel, event){
+			var maxPage = parseInt(self.overviewDataStore().length / self.pageSize());
+			console.log(maxPage);
+			self.currentGameListPage( ( (self.currentGameListPage() < maxPage) ? self.currentGameListPage() + 1 : self.currentGameListPage()) );
+			self.loadCurrentGameListPage();
+		}
+
+		this.loadCurrentGameListPage = function(){
+			self.gameList(self.getPageFromDataStore(self.currentGameListPage()));
+		}
+
+		this.standardOnFailureHandler = function(jqXHR, textStatus, errorThrown){
+
+			var http_code = jqXHR.status,
+				http_code_text = jqXHR.statusText,
+				error_msg = jqXHR.responseText;
+			self.mostRecentAjaxFailure(http_code + ' ' + http_code_text + '. See console for details');
+			console.log(error_msg);
+
+		}
+
+		this.resetVisibleUI = function(){
+			self.currentGameId(false);
+			self.gameList(undefined);
+			self.currentGame(undefined);
 		}
 
 		this.allSelected.subscribe(function(val){
@@ -297,12 +465,6 @@ $(document).ready(function(){
 			}
 			
 		}.bind(this));
-
-		this.resetVisibleUI = function(){
-			self.currentGameId(false);
-			self.gameList(undefined);
-			self.currentGameId(undefined);
-		}
 		
 		ko.bindingHandlers.showSuccess = {
 		    init: function(element, valueAccessor) {
@@ -312,8 +474,9 @@ $(document).ready(function(){
 		        // On update, fade in/out
 		        var message = valueAccessor();
 		        if(message && message != ""){
-					$(element).text(message.msg).slideDown(500).delay(3000).slideUp(500);	
+					$(element).text(message).slideDown(500).delay(3000).slideUp(500);	
 		        }
+		        self.mostRecentAjaxSuccess("");
 		    } 
 		};
 		
@@ -325,22 +488,28 @@ $(document).ready(function(){
 		        // On update, fade in/out
 		        var message = valueAccessor();
 		        if(message && message != ""){
-					$(element).text(message.msg).slideDown(500).delay(3000).slideUp(500);	
+					$(element).text(message).slideDown(500).delay(6000).slideUp(500);	
 		        }
+		        self.mostRecentAjaxFailure("");
 		    } 
 		};
 		
 		ko.bindingHandlers.showEditPanel = {
 		    init: function(element, valueAccessor) {
-		        $(element).hide();
+		        //Do nothing on init
 		    },
 		    update: function(element, valueAccessor) {
+
 		        // On update, fade in/out
 		        var show = valueAccessor();
-		        if(show){
-					$(element).slideDown(500);	
+		        if(show()){
+					$('#myModal .modal-content.editgame').show();
+					$('#myModal').modal('show');
 		        }else{
-		        	$(element).slideUp(500);
+		        	/*
+		        	$('#myModal').modal('hide');
+					$('#myModal .modal-content').hide();
+					*/
 		        }
 		    } 
 		};
@@ -348,9 +517,18 @@ $(document).ready(function(){
 	
 	var gameViewModel = new Games();
 	ko.applyBindings(gameViewModel);
+	gameViewModel.initOverviewDataStore();
 
 	//Initialize correct tab based on hash
 	var hash = window.location.hash;
 	gameViewModel.activeTab(hash.replace(/^#/, ''));
 	
 });
+
+function createNewEmptyGame(){
+	return {
+			title: "",
+			source: "",
+			platform: "",
+		};
+}
