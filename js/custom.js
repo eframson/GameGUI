@@ -1,3 +1,5 @@
+var gameViewModel = undefined;
+
 ko.observableArray.fn.smartRemove = function(obj){
 	var allItems = this();
 	for (var i = 0; i < allItems.length; i++) {
@@ -38,6 +40,7 @@ $(document).ready(function(){
 		this.activeTab = ko.observable();
 		this.gameList = ko.observableArray();
 		this.overviewDataStore = ko.observableArray();
+		this.activeDataStore = ko.observableArray(undefined);
 		this.showLoading = ko.observable(1);
 		this.mostRecentAjaxSuccess = ko.observable("");
 		this.mostRecentAjaxFailure = ko.observable("");
@@ -52,12 +55,13 @@ $(document).ready(function(){
 		this.currentGameListSorting = ko.observable({ column: "title", dir: "asc"});
 		this.sortNullsLast = ko.observable(true);
 		this.activeRequests = ko.observable(0);
+		this.forceShowActiveDataStore = ko.observable(false);
 
 		window.location.hash = "home";
 		
 		$('.search').autocomplete({
 			source: function( request, response ){
-				$.getJSON(
+				/*$.getJSON(
 					'api.php/games/search/' + request.term,
 					function(data){
 						if (data.results) {
@@ -73,7 +77,15 @@ $(document).ready(function(){
 							response([{ label: "No Results Found", value: "#" }]);
 						}
 					}
-				);
+				);*/
+
+				response($.map(self.filterDataStore("title|" + request.term + " || source|" + request.term), function( game ){
+					return {
+						label: game.title + " (" + game.source + ")",
+						value: game.id
+					}
+				}));
+
 			},
 			select: function(event, ui){
 				event.preventDefault();
@@ -213,13 +225,13 @@ $(document).ready(function(){
 		this.removeGameFromLocalObjects = function(game){
 			if( game instanceof Array ){
 				self.overviewDataStore.smartRemoveAll(game);
+				self.activeDataStore.smartRemoveAll(game);
 				self.gameList.smartRemoveAll(game);
-				console.log(game);
 				var mapped = $.map(game,function(elem, idx){ return elem.id });
-				console.log(mapped);
 				self.selectedGames.removeAll( mapped );
 			}else{
 				self.overviewDataStore.smartRemove(game);
+				self.activeDataStore.smartRemove(game);
 				self.gameList.smartRemove(game);
 				self.selectedGames.remove(game.id);			
 			}
@@ -260,17 +272,11 @@ $(document).ready(function(){
 				dataType: "json",
 				success: function(response, textStatus, jqXHR){
 					var idsToDelete = [];
-					console.log(idsToDelete);
-					console.log(self.overviewDataStore().length);
 					$.each(self.selectedGames(), function(idx, elem){
 						idsToDelete.push( {id: elem} );
 					});
-					console.log(self.selectedGames().length);
 					self.removeGameFromLocalObjects(idsToDelete);
 					self.applySortingToDataStore();
-					console.log(self.selectedGames().length);
-					console.log(self.overviewDataStore().length);
-					console.log(self.selectedGames());
 					console.log(response);
 					self.mostRecentAjaxSuccess(response.msg);
 				},
@@ -282,18 +288,6 @@ $(document).ready(function(){
 
 				self.showLoading(1);
 				self.gameList(undefined);
-
-				/*self.ajax({
-					dataType: "json",
-					url: 'api.php/games/',
-					//data: data,
-					success: function(response){
-						console.log(response);
-						self.gameList(response.results)
-
-						self.showLoading(0);
-					}
-				});*/
 				self.showLoading(0);
 
 		}
@@ -333,13 +327,11 @@ $(document).ready(function(){
 		}*/
 
 		this.toggleGameSelect = function(game, event){
-			console.log(arguments);
 			if(self.selectedGames.indexOf(game) == -1){
 				self.selectedGames.push(game);
 			}else{
 				self.selectedGames.remove(game);
 			}
-			console.log(self.selectedGames());
 		}
 
 		this.showModal = function(viewModel, event){
@@ -369,7 +361,6 @@ $(document).ready(function(){
 				self.ajax({
 					dataType: "json",
 					url: 'api.php/games/',
-					//data: data,
 					success: function(response){
 						console.log(response);
 						self.overviewDataStore(response.results)
@@ -383,10 +374,216 @@ $(document).ready(function(){
 		this.getPageFromDataStore = function(page_no){
 			page_no = page_no || 1;
 			end_no = self.pageSize() * page_no;
-			end_no = (end_no < self.overviewDataStore().length) ? end_no : self.overviewDataStore().length ;
+			end_no = (end_no < self.getAppropriateDataStore().length) ? end_no : self.getAppropriateDataStore().length ;
 			start_no = end_no - self.pageSize();
 			start_no = (start_no < 1) ? 0 : start_no ;
-			return self.overviewDataStore.slice(start_no, end_no);
+			return self.getAppropriateDataStore().slice(start_no, end_no);
+		}
+
+		this.prevGameListPage = function(viewModel, event){
+			self.currentGameListPage( ( self.currentGameListPage() > 1 ? self.currentGameListPage() - 1 : 1) )  ;
+			self.loadCurrentGameListPage();
+		}
+
+		this.nextGameListPage = function(viewModel, event){
+			var maxPage = self.currentGameListTotalPages();
+			self.currentGameListPage( ( (self.currentGameListPage() < maxPage) ? self.currentGameListPage() + 1 : self.currentGameListPage()) );
+			self.loadCurrentGameListPage();
+		}
+
+		this.loadCurrentGameListPage = function(){
+			self.gameList(self.getPageFromDataStore(self.currentGameListPage()));
+		}
+
+		this.parseTermString = function(termString){
+			console.log(termString);
+			var termObjects = { and: Array(), or: Array() };
+			if(termString === undefined){
+				return false;
+			}
+
+			var andTerms = Array();
+			var orTerms = Array();
+
+			if(termString.match(/ && /) || termString.match(/ \|\| /)){
+
+				var andArray = termString.split(" && ");
+
+				for(i = 0; i < andArray.length; i++){
+					
+					var orArray = andArray[i].split(" || ");
+
+					if( andArray.length > 1 && orArray.length > 1){
+
+						for(j = 0; j < orArray.length; j++){
+							if(j == 0 && i == 0){
+								orTerms.push(orArray[j]);
+							}else if( j == 0 ){
+								andTerms.push(orArray[j]);
+							}else{
+								orTerms.push(orArray[j]);
+							}
+						}
+
+					}else if( orArray.length > 1 ){
+						
+						for(j = 0; j < orArray.length; j++){
+							orTerms.push(orArray[j]);
+						}
+
+					}else{
+						andTerms.push(andArray[i]);
+					}
+				}
+			}else{
+				//This is arbitrary, if there's just one term it really could be in either array
+				orTerms.push(termString);
+			}
+
+			for( i = 0; i < andTerms.length; i++ ){
+				var filterParts = andTerms[i].split("|");
+				var termObj = {};
+
+				if(filterParts.length == 2){
+					termObj.field = filterParts[0];
+					termObj.termString = filterParts[1];
+				}else if(filterParts.length == 1){
+					termObj.field = 'ALL';
+					termObj.termString = filterParts[0];
+				}
+
+				termObjects.and.push(termObj);
+			}
+			
+			for( i = 0; i < orTerms.length; i++ ){
+				var filterParts = orTerms[i].split("|");
+				var termObj = {};
+
+				if(filterParts.length == 2){
+					termObj.field = filterParts[0];
+					termObj.termString = filterParts[1];
+				}else if(filterParts.length == 1){
+					termObj.field = 'ALL';
+					termObj.termString = filterParts[0];
+				}
+
+				termObjects.or.push(termObj);
+			}
+			console.log(termObjects);
+			return termObjects;
+
+		}
+
+		this.applyFiltering = function(viewModel, event){
+			var $elem = $(event.target);
+
+			if( event.keyCode == 13 ){
+				var filteredResults = self.filterDataStore($elem.val());
+				if(filteredResults.length == 0){
+					self.forceShowActiveDataStore(true);
+				}
+				self.activeDataStore(filteredResults);
+				this.applySortingToDataStore();
+			}
+		}
+
+		this.filterDataStore = function(filterString){
+			if (filterString === undefined){
+				return this.overviewDataStore();
+			}
+
+			var termObjects = self.parseTermString(filterString);
+			
+			var matches = Array();
+			ko.utils.arrayForEach(self.overviewDataStore(), function(game) {
+
+				if(termObjects.and.length > 0){
+					var doesMatch = true;
+
+					for(i = 0; i < termObjects.and.length; i++){
+						var matchTerm = termObjects.and[i].termString;
+						var matchField = termObjects.and[i].field;
+
+						if( matchField == 'ALL' ){
+							var loopMatch = true;
+
+							for(prop in game){
+					        	if(prop == "id"){
+					        		continue;
+					        	}
+
+					        	if( (game[prop] || "").match( new RegExp(matchTerm, "i")) === null ){
+									loopMatch = false;
+									break;
+								}
+					        }
+
+					        if( loopMatch == false){
+					        	doesMatch = false;
+					        	break;
+					        }
+
+						}else{
+							if( (game[matchField] || "").match( new RegExp(matchTerm, "i")) === null ){
+								doesMatch = false;
+								break;
+							}
+						}
+					}
+
+					if( doesMatch == false ){
+						return true;
+					}
+				}
+
+				if(doesMatch == true){
+					matches.push(game);
+					return true;
+				}
+
+				if(termObjects.or.length > 0){
+					var doesMatch = false;
+
+					for(i = 0; i < termObjects.or.length; i++){
+						var matchTerm = termObjects.or[i].termString;
+						var matchField = termObjects.or[i].field;
+
+						if( matchField == 'ALL' ){
+							var loopMatch = false;
+
+							for(prop in game){
+					        	if(prop == "id"){
+					        		continue;
+					        	}
+
+					        	if( (game[prop] || "").match( new RegExp(matchTerm, "i")) ){
+									loopMatch = true;
+									break;
+								}
+					        }
+
+					        if( loopMatch == true){
+					        	doesMatch = true;
+					        	break;
+					        }
+
+						}else{
+							if( (game[matchField] || "").match( new RegExp(matchTerm, "i")) ){
+								doesMatch = true;
+								break;
+							}
+						}
+
+					}
+				}
+
+		        if(doesMatch == true){
+					matches.push(game);
+				}
+		    });
+
+			console.log(matches);
+		    return matches;
 		}
 
 		this.updateSortingField = function(viewModel, event){
@@ -427,7 +624,7 @@ $(document).ready(function(){
 			var sortField = self.currentGameListSorting().column;
 			var sortDir = self.currentGameListSorting().dir;
 			
-			self.overviewDataStore.sort(function(left, right){
+			self.getAppropriateDataStore().sort(function(left, right){
 				var leftField = left[sortField];
 				var rightField = right[sortField];
 
@@ -455,20 +652,11 @@ $(document).ready(function(){
 			this.loadCurrentGameListPage();
 		}
 
-		this.prevGameListPage = function(viewModel, event){
-			self.currentGameListPage( ( self.currentGameListPage() > 1 ? self.currentGameListPage() - 1 : 1) )  ;
-			self.loadCurrentGameListPage();
-		}
-
-		this.nextGameListPage = function(viewModel, event){
-			var maxPage = parseInt(self.overviewDataStore().length / self.pageSize());
-			console.log(maxPage);
-			self.currentGameListPage( ( (self.currentGameListPage() < maxPage) ? self.currentGameListPage() + 1 : self.currentGameListPage()) );
-			self.loadCurrentGameListPage();
-		}
-
-		this.loadCurrentGameListPage = function(){
-			self.gameList(self.getPageFromDataStore(self.currentGameListPage()));
+		this.getAppropriateDataStore = function(){
+			if(self.activeDataStore().length > 0 || self.forceShowActiveDataStore() == true){
+				return self.activeDataStore();
+			}
+			return self.overviewDataStore();
 		}
 
 		this.standardOnFailureHandler = function(jqXHR, textStatus, errorThrown){
@@ -562,17 +750,17 @@ $(document).ready(function(){
 		        if(show()){
 					$('#myModal .modal-content.editgame').show();
 					$('#myModal').modal('show');
-		        }else{
-		        	/*
-		        	$('#myModal').modal('hide');
-					$('#myModal .modal-content').hide();
-					*/
 		        }
 		    } 
 		};
+
+		this.currentGameListTotalPages = ko.computed(function(){
+			var pageNum = Math.floor(self.getAppropriateDataStore().length / self.pageSize());
+			return (pageNum > 0) ? pageNum : 1 ;
+		});
 	};
 	
-	var gameViewModel = new Games();
+	gameViewModel = new Games();
 	ko.applyBindings(gameViewModel);
 	gameViewModel.initOverviewDataStore();
 

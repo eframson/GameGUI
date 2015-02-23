@@ -237,7 +237,7 @@
 	}
 	
 	function parse_term($term){
-		$split=explode(":",$term);
+		$split=explode("|",$term);
 		$return = array();
 		
 		if( count($split) == 1 ){

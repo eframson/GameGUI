@@ -82,7 +82,7 @@ button:focus {
 	padding: 0;
 }
 
-.all-games .row {
+.all-games .row:not(:last-child) {
 	padding: 10px 0;
 	border-bottom: solid #636363 1px;
 }

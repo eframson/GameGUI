@@ -31,20 +31,12 @@
 		<![endif]-->
 	</head>
 	<!-- @TODOs
-		- Make row-level delete buttons delete first, then remove row if successful
-		- Move search bar into page content area, and make filter "show all" results, rather than perform a search each time
-		- Preload data when page loads instead of querying multiple times (possibly moot if previous todo is addressed)
-		- Make "inline-edit" cancel buttons slideup as if edit button were clicked again
-		- Refactor "show all" as table-like grid-based system instead of actual table
-		- Clean up/reorganize custom.js (and maybe api.php)
-		- Make sure data is synced up (e.g. - if individual edit fields change and game is updated, "show all" results should reflect that)
+		- Make search bar look through local data store instead of querying each time
 		- Put in some content in "home" so one tab's content can be easily distinguished from another
 		- Make Cmd/Ctrl + F a shortcut for search rather than default Chrome/FF functionality
-		- Add pagination to "show all" table
-		- Move "mass action" controls somewhere so they don't mess up position of table items on screen when controls are first displayed
-		- When a search result is clicked, open it in panel instead of the body of the whole everything
+		- Implement per-page select all + actual select all functionality
+		- Add "X" icon to filter box so results can be easily cleared
 
-		- Button/enter key to apply filter so the user can put in custom stuff like "platform:windows" without it trying to filter
 		- BUG: Adding game from the homepage displays "Show All page"
 	-->
 	<body>
@@ -182,10 +174,10 @@
 				</div>
 			</div>
 
-			<div class="all-games hidden" data-bind="visible: gameList() && gameList().length > 0, css: { hidden: false }">
+			<div class="all-games hidden" data-bind="visible: gameList() && ( gameList().length > 0 || forceShowActiveDataStore() == true), css: { hidden: false }">
 				<div class="row table-meta">
 					<div class="col-md-3 pagination-controls">
-						<span class="page-label" data-bind="text: 'Page: ' + currentGameListPage()"></span>
+						<span class="page-label" data-bind="text: 'Page: ' + currentGameListPage() + '/' + currentGameListTotalPages()"></span>
 						<button data-bind="click: prevGameListPage" class="page-control glyphicon glyphicon-triangle-left"></button>
 						<span class="page-label" data-bind="text: '(' + pageSize() + ' per page)'"></span>
 						<button data-bind="click: nextGameListPage" class="page-control glyphicon glyphicon-triangle-right"></button>
@@ -201,14 +193,14 @@
 					</div>
 					<div class="col-md-1"></div>
 					<div class="col-md-3 filter-container">
-						<input autocomplete="off" placeholder="Filter" title="Filter" class="form-control filter" type="text">
+						<input autocomplete="off" placeholder="Filter (hit Enter when done)" title="Filter" class="form-control filter" type="text" data-bind="event: { keyup: applyFiltering }">
 					</div>
 				</div>
 
 				<div class="row thead">
 					<div class="col-md-1 ctrls-column"></div>
 					<div data-bind="click: updateSortingField" data-target="id" class="col-md-1">ID<span class="sorting-icon glyphicon"></span></div>
-					<div data-bind="click: updateSortingField" data-target="title" class="col-md-5">Name<span class="sorting-icon glyphicon glyphicon-triangle-top"></span></div>
+					<div data-bind="click: updateSortingField" data-target="title" class="col-md-5">Title<span class="sorting-icon glyphicon glyphicon-triangle-top"></span></div>
 					<div data-bind="click: updateSortingField" data-target="source" class="col-md-2">Source<span class="sorting-icon glyphicon"></span></div>
 					<div data-bind="click: updateSortingField" data-target="platform" class="col-md-2">Platform<span class="sorting-icon glyphicon"></span></div>
 					<div class="col-md-1 select-all"><input type="checkbox" data-bind="value: 1, checked: allSelected"></div>
@@ -227,6 +219,20 @@
 					<div class="col-md-1"><input type="checkbox" data-bind="attr: { value: $data.id }, checked: $root.selectedGames"></div>
 				</div>
 				<!-- /ko -->
+
+				<div data-bind="visible: gameList() && gameList().length == 0" class="row single-game">
+					<div class="col-md-12">No titles matched your query</div>
+				</div>
+
+				<div class="row table-meta">
+					<div class="col-md-3 pagination-controls">
+						<span class="page-label" data-bind="text: 'Page: ' + currentGameListPage() + '/' + currentGameListTotalPages()"></span>
+						<button data-bind="click: prevGameListPage" class="page-control glyphicon glyphicon-triangle-left"></button>
+						<span class="page-label" data-bind="text: '(' + pageSize() + ' per page)'"></span>
+						<button data-bind="click: nextGameListPage" class="page-control glyphicon glyphicon-triangle-right"></button>
+					</div>
+					<div class="col-md-8"></div>
+				</div>
 			</div>
 
 
