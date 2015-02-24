@@ -36,6 +36,7 @@
 		- Make Cmd/Ctrl + F a shortcut for search rather than default Chrome/FF functionality
 		- Implement per-page select all + actual select all functionality
 		- Add "X" icon to filter box so results can be easily cleared
+		- Make pagination control width/spacing static so page # doesn't vary spacing
 
 		- BUG: Adding game from the homepage displays "Show All page"
 	-->

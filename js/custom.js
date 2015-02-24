@@ -56,7 +56,18 @@ $(document).ready(function(){
 		this.sortNullsLast = ko.observable(true);
 		this.activeRequests = ko.observable(0);
 		this.forceShowActiveDataStore = ko.observable(false);
-
+		
+		this.gameList = ko.computed(function(){
+		
+			var page_no = self.currentGameListPage();
+			page_no = page_no || 1;
+			end_no = self.pageSize() * page_no;
+			end_no = (end_no < self.overviewDataStore().length) ? end_no : self.overviewDataStore().length ;
+			start_no = end_no - self.pageSize();
+			start_no = (start_no < 1) ? 0 : start_no ;
+			return self.overviewDataStore().slice(start_no, end_no);
+        });
+		
 		window.location.hash = "home";
 		
 		$('.search').autocomplete({
@@ -226,13 +237,13 @@ $(document).ready(function(){
 			if( game instanceof Array ){
 				self.overviewDataStore.smartRemoveAll(game);
 				self.activeDataStore.smartRemoveAll(game);
-				self.gameList.smartRemoveAll(game);
+				//self.gameList.smartRemoveAll(game);
 				var mapped = $.map(game,function(elem, idx){ return elem.id });
 				self.selectedGames.removeAll( mapped );
 			}else{
 				self.overviewDataStore.smartRemove(game);
 				self.activeDataStore.smartRemove(game);
-				self.gameList.smartRemove(game);
+				//self.gameList.smartRemove(game);
 				self.selectedGames.remove(game.id);			
 			}
 
@@ -287,7 +298,7 @@ $(document).ready(function(){
 		this.showHome = function(){
 
 				self.showLoading(1);
-				self.gameList(undefined);
+				//self.gameList(undefined);
 				self.showLoading(0);
 
 		}
@@ -392,7 +403,7 @@ $(document).ready(function(){
 		}
 
 		this.loadCurrentGameListPage = function(){
-			self.gameList(self.getPageFromDataStore(self.currentGameListPage()));
+			//self.gameList(self.getPageFromDataStore(self.currentGameListPage()));
 		}
 
 		this.parseTermString = function(termString){
@@ -671,7 +682,7 @@ $(document).ready(function(){
 
 		this.resetVisibleUI = function(){
 			self.currentGameId(false);
-			self.gameList(undefined);
+			//self.gameList(undefined);
 			self.currentGame(undefined);
 		}
 
