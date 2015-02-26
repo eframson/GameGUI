@@ -1,98 +1,264 @@
 var gameViewModel = undefined;
 
-ko.observableArray.fn.smartRemove = function(obj){
-	var allItems = this();
-	for (var i = 0; i < allItems.length; i++) {
-		var current = allItems[i];
-		if (current.id == obj.id){
-			this.remove(current);
-			return;
-		}
-	}
-}
-
-ko.observableArray.fn.smartRemoveAll = function(obj_array){
-	var allItems = this();
-	var self = this;
-	
-	$.each(obj_array, function(idx, elem){
-	
-		for (var i = 0; i < allItems.length; i++) {
-			var current = allItems[i];
-			if (current.id == elem.id){
-				self.remove(current);
-				return;
-			}
-		}
-	
-	});
-}
-
-$(document).ready(function(){
-	
 	// Here's my data model
 	var Games = function() {
+
 		var self = this;
-		this.currentGameId = ko.observable();
-		this.currentGame = ko.observable();
-		this.newGame = ko.observable(createNewEmptyGame());
-		this.searchTerm = ko.observable();
-		this.activeTab = ko.observable();
-		this.gameList = ko.observableArray();
-		this.overviewDataStore = ko.observableArray();
-		this.activeDataStore = ko.observableArray(undefined);
-		this.showLoading = ko.observable(1);
-		this.mostRecentAjaxSuccess = ko.observable("");
-		this.mostRecentAjaxFailure = ko.observable("");
-		this.allSelected = ko.observable(0);
-		this.massUpdateData = ko.observable({
-			platform: undefined,
-			source: undefined
-		});
-		this.pageSize = ko.observable(25);
-		this.currentPageNo = ko.observable(1);
-		this.currentGameListSorting = ko.observable({ column: "title", dir: "asc"});
-		this.sortNullsLast = ko.observable(true);
-		this.activeRequests = ko.observable(0);
-		this.forceShowActiveDataStore = ko.observable(false);
-		this.listMode = ko.observable("all");
-		
-		this.currentPage = ko.computed(function(){
-			if(self.activeTab() == "all"){
-				var appropriateDataStore = ko.unwrap(self.getAppropriateDataStore());
-				var page_no = self.currentPageNo();
-				end_no = self.pageSize() * page_no;
-				end_no = (end_no < appropriateDataStore.length) ? end_no : appropriateDataStore.length ;
-				start_no = end_no - self.pageSize();
-				start_no = (start_no < 1) ? 0 : start_no ;
-				return appropriateDataStore.slice(start_no, end_no);
-			}else{
-				return Array();
-			}
-        });
 
-        this.selectedGames = ko.computed(function(){
-			if(self.activeTab() == "all"){
-				var appropriateDataStore = ko.unwrap(self.getAppropriateDataStore());
-				var selectedGames = ko.utils.arrayFilter(appropriateDataStore, function(game){
-					return ko.unwrap(game).selected;
+		this.initObservables = function(){
+
+			self.currentGameId = ko.observable();
+			self.currentGame = ko.observable();
+			self.newGame = ko.observable(self.createNewEmptyGame());
+			self.searchTerm = ko.observable();
+			self.activeTab = ko.observable();
+			self.gameList = ko.observableArray();
+			self.overviewDataStore = ko.observableArray();
+			self.activeDataStore = ko.observableArray(undefined);
+			self.showLoading = ko.observable(1);
+			self.mostRecentAjaxSuccess = ko.observable("");
+			self.mostRecentAjaxFailure = ko.observable("");
+			self.allSelected = ko.observable(0);
+			self.massUpdateData = ko.observable({
+				platform: undefined,
+				source: undefined
+			});
+			self.pageSize = ko.observable(25);
+			self.currentPageNo = ko.observable(1);
+			self.currentGameListSorting = ko.observable({ column: "title", dir: "asc"});
+			self.sortNullsLast = ko.observable(true);
+			self.activeRequests = ko.observable(0);
+			self.forceShowActiveDataStore = ko.observable(false);
+			self.listMode = ko.observable("all");
+
+			self.currentPage = ko.computed(function(){
+				if(self.activeTab() == "all"){
+					var appropriateDataStore = ko.unwrap(self.getAppropriateDataStore());
+					var page_no = self.currentPageNo();
+					end_no = self.pageSize() * page_no;
+					end_no = (end_no < appropriateDataStore.length) ? end_no : appropriateDataStore.length ;
+					start_no = end_no - self.pageSize();
+					start_no = (start_no < 1) ? 0 : start_no ;
+					return appropriateDataStore.slice(start_no, end_no);
+				}else{
+					return Array();
+				}
+	        });
+
+	        self.selectedGames = ko.computed(function(){
+				if(self.activeTab() == "all"){
+					var appropriateDataStore = ko.unwrap(self.getAppropriateDataStore());
+					var selectedGames = ko.utils.arrayFilter(appropriateDataStore, function(game){
+						return ko.unwrap(game).selected;
+					});
+					return selectedGames;
+				}else{
+					return Array();
+				}
+	        });
+
+	        self.allSelectedOnPage = ko.computed(function(){
+	        	var allSelected = true;
+	        	$.each(self.currentPage(), function(idx, elem){
+	        		if(elem().selected == false){
+	        			allSelected = false;
+	        			return;
+	        		}
+	        	});
+	        	return allSelected;
+	        });
+
+			self.allSelected.subscribe(function(val){
+				console.log("changed!");
+				if(val && val != 0){
+					console.log("select all");
+					self.selectedGames( ko.utils.arrayMap( self.gameList(), function(item){ return item.id; } ) );
+					//self.selectedGames.push("11");
+				}else{
+					console.log("remove all");
+					self.selectedGames.removeAll();
+				}
+				
+			}.bind(self));
+
+			self.selectedGames.subscribe(function(selectedGameArray){
+
+				var $slider = $(".mass-actions"),
+					elemDuration = 200;
+
+				if(selectedGameArray && selectedGameArray.length && selectedGameArray.length > 0){
+					$slider.show('slide', {direction: 'down'}, elemDuration);
+				}else{
+					$slider.hide('slide', {direction: 'down'}, elemDuration);
+				}
+			}.bind(self));
+
+			self.activeTab.subscribe(function(activeTab){
+				self.resetVisibleUI();
+
+				if(activeTab=="home"){
+					self.showHome();
+				}else if (activeTab=="all"){
+					self.showAll();
+				}
+				
+			}.bind(self));
+
+			self.currentGameListTotalPages = ko.computed(function(){
+				var appropriateDataStore = ko.unwrap(self.getAppropriateDataStore()),
+					pageNum = Math.floor(appropriateDataStore.length / self.pageSize());
+				return (pageNum > 0) ? pageNum : 1 ;
+			});
+
+		}
+
+
+		this.initOverviewDataStore = function(){
+
+				self.ajax({
+					dataType: "json",
+					url: 'api.php/games/',
+					success: function(response){
+						console.log(response);
+
+						//Attach some extra properties
+						$.each(response.results, function(idx, elem){
+							//elem.selected = ko.observable(false);
+							elem.selected = false;
+						});
+
+						self.overviewDataStore($.map(response.results, function(game){
+							return ko.observable(game);
+						}));
+
+						//self.overviewDataStore(response.results)
+						self.showLoading(0);
+					}
 				});
-				return selectedGames;
-			}else{
-				return Array();
-			}
-        });
 
-        this.allSelectedOnPage = ko.computed(function(){
-        	var allSelected = true;
-        	$.each(self.currentPage(), function(idx, elem){
-        		if(elem().selected == false){
-        			allSelected = false;
-        			return;
-        		}
-        	});
-        	return allSelected;
-        });
+		}
+
+		this.updateGame = function(game){
+			//var index = self.overviewDataStore.indexOf(game);
+
+			self.ajax({
+				type: 'PUT',
+				contentType: 'application/json',
+				url: 'api.php/games/' + game.id,
+				dataType: "json",
+				data: JSON.stringify(game),
+				success: function(response, textStatus, jqXHR){
+					$.each(response.successObject, function(idx, elem){
+
+						var newGameDataObj = elem;
+						console.log(newGameDataObj);
+						$.each(newGameDataObj, function(idx, elem){
+							game[idx] = elem;
+						});
+
+						self.removeGameFromLocalObjects(game);
+						self.addGameToLocalObjects(game);
+					});
+					self.getAppropriateDataStore().notifySubscribers(ko.unwrap(self.getAppropriateDataStore()));
+					//console.log(self.overviewDataStore()[index]);
+
+					//self.applySortingToDataStore();
+
+					//self.overviewDataStore.notifySubscribers(ko.unwrap(self.overviewDataStore));
+					//self.getAppropriateDataStore().notifySubscribers(ko.unwrap(self.getAppropriateDataStore()));
+
+					self.hideModal();
+					console.log(response);
+					self.mostRecentAjaxSuccess(response.msg);
+				},
+				error: self.standardOnFailureHandler
+			});
+		}
+		
+		this.massUpdate = function(viewModel, event){
+			var ids = $.map(self.selectedGames(),function(game){
+				return game.id;
+			});
+			self.ajax({
+				type: 'PUT',
+				contentType: 'application/json',
+				url: 'api.php/games/' + JSON.stringify(ids),
+				dataType: "json",
+				data: JSON.stringify(self.massUpdateData()),
+				success: function(response, textStatus, jqXHR){
+					$.each(response.successObject, function(idx, elem){
+						self.removeGameFromLocalObjects(elem);
+						self.addGameToLocalObjects(elem);
+					});
+
+					self.applySortingToDataStore();
+					self.hideModal();
+					console.log(response);
+					self.mostRecentAjaxSuccess(response.msg);
+				},
+				error: self.standardOnFailureHandler
+			});
+		}
+		
+		this.createGame = function(){
+			self.ajax({
+				type: 'POST',
+				contentType: 'application/json',
+				url: 'api.php/games',
+				dataType: "json",
+				data: JSON.stringify(self.newGame()),
+				success: function(response, textStatus, jqXHR){
+					self.addGameToLocalObjects(response.successObject);
+					self.applySortingToDataStore();
+					self.hideModal();
+					console.log(response);
+					self.mostRecentAjaxSuccess(response.msg);
+					self.newGame(self.createNewEmptyGame())
+				},
+				error: self.standardOnFailureHandler
+			});
+		}
+
+		this.deleteGame = function(game, onSuccess, onFailure){
+			self.ajax({
+				type: 'DELETE',
+				contentType: 'application/json',
+				url: 'api.php/games/' + game.id,
+				dataType: "json",
+				success: function(response, textStatus, jqXHR){
+					if(typeof onSuccess === 'function'){
+						onSuccess(response, textStatus, jqXHR);
+					}
+				},
+				error: function(jqXHR, textStatus, errorThrown){
+					if(typeof onFailure === 'function'){
+						onFailure(jqXHR, textStatus, errorThrown);
+					}else{
+						self.standardOnFailureHandler(jqXHR, textStatus, errorThrown);
+					}
+				}
+			});
+		}
+		
+		this.massDelete = function(viewModel, event){
+			self.ajax({
+				type: 'DELETE',
+				contentType: 'application/json',
+				url: 'api.php/games/' + JSON.stringify(self.selectedGames()),
+				dataType: "json",
+				success: function(response, textStatus, jqXHR){
+					var idsToDelete = [];
+					$.each(self.selectedGames(), function(idx, elem){
+						idsToDelete.push( {id: elem} );
+					});
+					self.removeGameFromLocalObjects(idsToDelete);
+					self.applySortingToDataStore();
+					console.log(response);
+					self.mostRecentAjaxSuccess(response.msg);
+				},
+				error: self.standardOnFailureHandler
+			});
+		}
 
 		/* //Comment out for testing
 		this.filterString = ko.observable(undefined);
@@ -197,8 +363,6 @@ $(document).ready(function(){
 		});
 		*/
 		
-		window.location.hash = "home";
-		
 		$('.search').autocomplete({
 			source: function( request, response ){
 				/*$.getJSON(
@@ -257,95 +421,6 @@ $(document).ready(function(){
 			}
 		});
 
-		this.ajax = function(ajaxOpts){
-			ajaxOpts.complete = function(jqXHR, textStatus){
-				self.activeRequests( self.activeRequests() - 1 );
-			}
-			self.activeRequests( self.activeRequests() + 1 );
-			$.ajax(ajaxOpts);
-		}
-		
-		this.updateGame = function(game){
-			//var index = self.overviewDataStore.indexOf(game);
-
-			self.ajax({
-				type: 'PUT',
-				contentType: 'application/json',
-				url: 'api.php/games/' + game.id,
-				dataType: "json",
-				data: JSON.stringify(game),
-				success: function(response, textStatus, jqXHR){
-					$.each(response.successObject, function(idx, elem){
-
-						var newGameDataObj = elem;
-						console.log(newGameDataObj);
-						$.each(newGameDataObj, function(idx, elem){
-							game[idx] = elem;
-						});
-
-						self.removeGameFromLocalObjects(game);
-						self.addGameToLocalObjects(game);
-					});
-					self.getAppropriateDataStore().notifySubscribers(ko.unwrap(self.getAppropriateDataStore()));
-					//console.log(self.overviewDataStore()[index]);
-
-					//self.applySortingToDataStore();
-
-					//self.overviewDataStore.notifySubscribers(ko.unwrap(self.overviewDataStore));
-					//self.getAppropriateDataStore().notifySubscribers(ko.unwrap(self.getAppropriateDataStore()));
-
-					self.hideModal();
-					console.log(response);
-					self.mostRecentAjaxSuccess(response.msg);
-				},
-				error: self.standardOnFailureHandler
-			});
-		}
-		
-		this.massUpdate = function(viewModel, event){
-			var ids = $.map(self.selectedGames(),function(game){
-				return game.id;
-			});
-			self.ajax({
-				type: 'PUT',
-				contentType: 'application/json',
-				url: 'api.php/games/' + JSON.stringify(ids),
-				dataType: "json",
-				data: JSON.stringify(self.massUpdateData()),
-				success: function(response, textStatus, jqXHR){
-					$.each(response.successObject, function(idx, elem){
-						self.removeGameFromLocalObjects(elem);
-						self.addGameToLocalObjects(elem);
-					});
-
-					self.applySortingToDataStore();
-					self.hideModal();
-					console.log(response);
-					self.mostRecentAjaxSuccess(response.msg);
-				},
-				error: self.standardOnFailureHandler
-			});
-		}
-		
-		this.createGame = function(){
-			self.ajax({
-				type: 'POST',
-				contentType: 'application/json',
-				url: 'api.php/games',
-				dataType: "json",
-				data: JSON.stringify(self.newGame()),
-				success: function(response, textStatus, jqXHR){
-					self.addGameToLocalObjects(response.successObject);
-					self.applySortingToDataStore();
-					self.hideModal();
-					console.log(response);
-					self.mostRecentAjaxSuccess(response.msg);
-					self.newGame(createNewEmptyGame())
-				},
-				error: self.standardOnFailureHandler
-			});
-		}
-
 		this.deleteGameFromModal = function(game){
 			self.deleteGame(game, function(response, textStatus, jqXHR){
 				self.mostRecentAjaxSuccess(response.msg);
@@ -382,47 +457,6 @@ $(document).ready(function(){
 
 		this.addGameToLocalObjects = function(game){
 			self.overviewDataStore.push(game);
-		}
-		
-		this.deleteGame = function(game, onSuccess, onFailure){
-			self.ajax({
-				type: 'DELETE',
-				contentType: 'application/json',
-				url: 'api.php/games/' + game.id,
-				dataType: "json",
-				success: function(response, textStatus, jqXHR){
-					if(typeof onSuccess === 'function'){
-						onSuccess(response, textStatus, jqXHR);
-					}
-				},
-				error: function(jqXHR, textStatus, errorThrown){
-					if(typeof onFailure === 'function'){
-						onFailure(jqXHR, textStatus, errorThrown);
-					}else{
-						self.standardOnFailureHandler(jqXHR, textStatus, errorThrown);
-					}
-				}
-			});
-		}
-		
-		this.massDelete = function(viewModel, event){
-			self.ajax({
-				type: 'DELETE',
-				contentType: 'application/json',
-				url: 'api.php/games/' + JSON.stringify(self.selectedGames()),
-				dataType: "json",
-				success: function(response, textStatus, jqXHR){
-					var idsToDelete = [];
-					$.each(self.selectedGames(), function(idx, elem){
-						idsToDelete.push( {id: elem} );
-					});
-					self.removeGameFromLocalObjects(idsToDelete);
-					self.applySortingToDataStore();
-					console.log(response);
-					self.mostRecentAjaxSuccess(response.msg);
-				},
-				error: self.standardOnFailureHandler
-			});
 		}
 
 		this.showHome = function(){
@@ -480,7 +514,7 @@ $(document).ready(function(){
 			var whichContent = $elem.data("target");
 
 			if(whichContent == "newgame"){
-				self.newGame(createNewEmptyGame());
+				self.newGame(self.createNewEmptyGame());
 			}
 
 			self.showModal(whichContent);
@@ -504,31 +538,6 @@ $(document).ready(function(){
 			});
 
 			self.getAppropriateDataStore().notifySubscribers(ko.unwrap(self.getAppropriateDataStore()));
-		}
-
-		this.initOverviewDataStore = function(){
-
-				self.ajax({
-					dataType: "json",
-					url: 'api.php/games/',
-					success: function(response){
-						console.log(response);
-
-						//Attach some extra properties
-						$.each(response.results, function(idx, elem){
-							//elem.selected = ko.observable(false);
-							elem.selected = false;
-						});
-
-						self.overviewDataStore($.map(response.results, function(game){
-							return ko.observable(game);
-						}));
-
-						//self.overviewDataStore(response.results)
-						self.showLoading(0);
-					}
-				});
-
 		}
 
 		this.toggleSelectAll = function(gameViewModel, event){
@@ -562,16 +571,6 @@ $(document).ready(function(){
         	//This is essential for the default checked behavior to continue
         	return true;
         }
-
-		/* //Deprecated?
-		this.getPageFromDataStore = function(page_no){
-			page_no = page_no || 1;
-			end_no = self.pageSize() * page_no;
-			end_no = (end_no < self.getAppropriateDataStore().length) ? end_no : self.getAppropriateDataStore().length ;
-			start_no = end_no - self.pageSize();
-			start_no = (start_no < 1) ? 0 : start_no ;
-			return self.getAppropriateDataStore().slice(start_no, end_no);
-		}*/
 
 		this.prevGameListPage = function(viewModel, event){
 			self.currentPageNo( ( self.currentPageNo() > 1 ? self.currentPageNo() - 1 : 1) )  ;
@@ -837,6 +836,12 @@ $(document).ready(function(){
 			});
 		}
 
+		this.resetVisibleUI = function(){
+			self.currentGameId(false);
+			//self.gameList(undefined);
+			self.currentGame(undefined);
+		}
+
 		this.getAppropriateDataStore = function(){
 			if (self.listMode() == "all"){
 				return self.overviewDataStore;
@@ -851,6 +856,14 @@ $(document).ready(function(){
 			
 		}
 
+		this.ajax = function(ajaxOpts){
+			ajaxOpts.complete = function(jqXHR, textStatus){
+				self.activeRequests( self.activeRequests() - 1 );
+			}
+			self.activeRequests( self.activeRequests() + 1 );
+			$.ajax(ajaxOpts);
+		}
+
 		this.standardOnFailureHandler = function(jqXHR, textStatus, errorThrown){
 
 			var http_code = jqXHR.status,
@@ -861,48 +874,14 @@ $(document).ready(function(){
 
 		}
 
-		this.resetVisibleUI = function(){
-			self.currentGameId(false);
-			//self.gameList(undefined);
-			self.currentGame(undefined);
+		this.createNewEmptyGame = function(){
+			return {
+					title: "",
+					source: "",
+					platform: "",
+			};
 		}
 
-		this.allSelected.subscribe(function(val){
-			console.log("changed!");
-			if(val && val != 0){
-				console.log("select all");
-				self.selectedGames( ko.utils.arrayMap( self.gameList(), function(item){ return item.id; } ) );
-				//self.selectedGames.push("11");
-			}else{
-				console.log("remove all");
-				self.selectedGames.removeAll();
-			}
-			
-		}.bind(this));
-
-		this.selectedGames.subscribe(function(selectedGameArray){
-
-			var $slider = $(".mass-actions"),
-				elemDuration = 200;
-
-			if(selectedGameArray && selectedGameArray.length && selectedGameArray.length > 0){
-				$slider.show('slide', {direction: 'down'}, elemDuration);
-			}else{
-				$slider.hide('slide', {direction: 'down'}, elemDuration);
-			}
-		}.bind(this));
-
-		this.activeTab.subscribe(function(activeTab){
-			this.resetVisibleUI();
-
-			if(activeTab=="home"){
-				this.showHome();
-			}else if (activeTab=="all"){
-				this.showAll();
-			}
-			
-		}.bind(this));
-		
 		ko.bindingHandlers.showSuccess = {
 		    init: function(element, valueAccessor) {
 		        $(element).hide();
@@ -930,28 +909,18 @@ $(document).ready(function(){
 		        self.mostRecentAjaxFailure("");
 		    } 
 		};
-
-		this.currentGameListTotalPages = ko.computed(function(){
-			var appropriateDataStore = ko.unwrap(self.getAppropriateDataStore()),
-				pageNum = Math.floor(appropriateDataStore.length / self.pageSize());
-			return (pageNum > 0) ? pageNum : 1 ;
-		});
 	};
-	
+
+$(document).ready(function(){
+
 	gameViewModel = new Games();
+	gameViewModel.initObservables();
 	ko.applyBindings(gameViewModel);
 	gameViewModel.initOverviewDataStore();
 
 	//Initialize correct tab based on hash
+	window.location.hash = "home";
 	var hash = window.location.hash;
 	gameViewModel.activeTab(hash.replace(/^#/, ''));
 	
 });
-
-function createNewEmptyGame(){
-	return {
-			title: "",
-			source: "",
-			platform: "",
-		};
-}
