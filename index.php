@@ -49,7 +49,7 @@
 				<li class="" data-bind="css { active: activeTab() == 'home' }" ><a href="#home" data-bind="click: setActiveTab">Home</a></li>
 				<li class="" data-bind="css { active: activeTab() == 'all' }"><a href="#all" data-bind="click: setActiveTab">Show All</a></li>
 				<li class="pull-right"><input autocomplete="off" placeholder="Search" title="Search" class="form-control search" type="text"></li>
-				<li class="new-game-button-container pull-right"><button type="button" data-target="newgame" data-bind="click: showModal" class="form-control btn btn-primary">New Game</button></li>
+				<li class="new-game-button-container pull-right"><button type="button" data-target="newgame" data-bind="click: triggerModal" class="form-control btn btn-primary">New Game</button></li>
 			  </ul>
 			  <div id="container"></div>
 			</div><!--/.nav-collapse -->
@@ -115,7 +115,7 @@
 		      </div>
 		    </div>
 
-			<div data-bind="showEditPanel: currentGameId, with: currentGame" class="current-game modal-content editgame">
+			<div data-bind="with: currentGame" class="current-game modal-content editgame">
 				<div class="modal-header">
 			        <button type="button" class="close" data-bind="click: $root.hideModal"><span aria-hidden="true">&times;</span><span class="sr-only">Close</span></button>
 			        <h4 class="modal-title" id="myModalLabel">Edit Game</h4>
@@ -176,10 +176,10 @@
 				</div>
 			</div>
 
-			<div class="all-games hidden" data-bind="visible: gameList() && ( gameList().length > 0 || forceShowActiveDataStore() == true), css: { hidden: false }">
+			<div class="all-games hidden" data-bind="visible: activeTab() == 'all', css: { hidden: false }">
 				<div class="row table-meta">
 					<div class="col-md-3 pagination-controls">
-						<span class="page-label" data-bind="text: 'Page: ' + currentGameListPage() + '/' + currentGameListTotalPages()"></span>
+						<span class="page-label" data-bind="text: 'Page: ' + currentPageNo() + '/' + currentGameListTotalPages()"></span>
 						<button data-bind="click: prevGameListPage" class="page-control glyphicon glyphicon-triangle-left"></button>
 						<span class="page-label" data-bind="text: '(' + pageSize() + ' per page)'"></span>
 						<button data-bind="click: nextGameListPage" class="page-control glyphicon glyphicon-triangle-right"></button>
@@ -188,7 +188,7 @@
 						<div class="slider-container">
 							<div class="mass-actions">
 								<button type="button" class="btn btn-danger" data-bind="click: massDelete, text: 'Delete ' + selectedGames().length + ' game(s)'"></button>
-								<button type="button" class="btn btn-default" data-target="massupdate" data-bind="click: showModal">Mass Update</button>
+								<button type="button" class="btn btn-default" data-target="massupdate" data-bind="click: triggerModal">Mass Update</button>
 								<button type="button" class="btn btn-default" data-bind="click: clearSelection">Clear Selection</button>
 							</div>
 						</div>
@@ -205,10 +205,10 @@
 					<div data-bind="click: updateSortingField" data-target="title" class="col-md-5">Title<span class="sorting-icon glyphicon glyphicon-triangle-top"></span></div>
 					<div data-bind="click: updateSortingField" data-target="source" class="col-md-2">Source<span class="sorting-icon glyphicon"></span></div>
 					<div data-bind="click: updateSortingField" data-target="platform" class="col-md-2">Platform<span class="sorting-icon glyphicon"></span></div>
-					<div class="col-md-1 select-all"><input type="checkbox" data-bind="value: 1, checked: allSelected"></div>
+					<div class="col-md-1 select-all"><input type="checkbox" data-bind="checked: allSelectedOnPage, click: toggleSelectAll"></div>
 				</div>
 
-				<!-- ko foreach: gameList -->
+				<!-- ko foreach: currentPage -->
 				<div class="row single-game">
 					<div class="col-md-1">
 						<span data-bind="click: $root.deleteGameFromList" class="delete-ctrl glyphicon glyphicon-trash"></span>
@@ -218,17 +218,17 @@
 					<div class="col-md-5" data-bind="text: title"></div>
 					<div class="col-md-2" data-bind="text: source"></div>
 					<div class="col-md-2" data-bind="text: platform">Platform</div>
-					<div class="col-md-1"><input type="checkbox" data-bind="attr: { value: $data.id }, checked: $root.selectedGames"></div>
+					<div class="col-md-1"><input type="checkbox" data-bind="checked: selected, click: $root.updateSelected "></div>
 				</div>
 				<!-- /ko -->
 
-				<div data-bind="visible: gameList() && gameList().length == 0" class="row single-game">
+				<div data-bind="visible: currentPage() && currentPage().length == 0" class="row single-game">
 					<div class="col-md-12">No titles matched your query</div>
 				</div>
 
 				<div class="row table-meta">
 					<div class="col-md-3 pagination-controls">
-						<span class="page-label" data-bind="text: 'Page: ' + currentGameListPage() + '/' + currentGameListTotalPages()"></span>
+						<span class="page-label" data-bind="text: 'Page: ' + currentPageNo() + '/' + currentGameListTotalPages()"></span>
 						<button data-bind="click: prevGameListPage" class="page-control glyphicon glyphicon-triangle-left"></button>
 						<span class="page-label" data-bind="text: '(' + pageSize() + ' per page)'"></span>
 						<button data-bind="click: nextGameListPage" class="page-control glyphicon glyphicon-triangle-right"></button>

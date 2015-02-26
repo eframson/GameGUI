@@ -44,29 +44,158 @@ $(document).ready(function(){
 		this.showLoading = ko.observable(1);
 		this.mostRecentAjaxSuccess = ko.observable("");
 		this.mostRecentAjaxFailure = ko.observable("");
-		this.selectedGames = ko.observableArray();
 		this.allSelected = ko.observable(0);
 		this.massUpdateData = ko.observable({
 			platform: undefined,
 			source: undefined
 		});
 		this.pageSize = ko.observable(25);
-		this.currentGameListPage = ko.observable();
+		this.currentPageNo = ko.observable(1);
 		this.currentGameListSorting = ko.observable({ column: "title", dir: "asc"});
 		this.sortNullsLast = ko.observable(true);
 		this.activeRequests = ko.observable(0);
 		this.forceShowActiveDataStore = ko.observable(false);
+		this.listMode = ko.observable("all");
 		
-		this.gameList = ko.computed(function(){
-		
-			var page_no = self.currentGameListPage();
-			page_no = page_no || 1;
-			end_no = self.pageSize() * page_no;
-			end_no = (end_no < self.overviewDataStore().length) ? end_no : self.overviewDataStore().length ;
-			start_no = end_no - self.pageSize();
-			start_no = (start_no < 1) ? 0 : start_no ;
-			return self.overviewDataStore().slice(start_no, end_no);
+		this.currentPage = ko.computed(function(){
+			if(self.activeTab() == "all"){
+				var appropriateDataStore = ko.unwrap(self.getAppropriateDataStore());
+				var page_no = self.currentPageNo();
+				end_no = self.pageSize() * page_no;
+				end_no = (end_no < appropriateDataStore.length) ? end_no : appropriateDataStore.length ;
+				start_no = end_no - self.pageSize();
+				start_no = (start_no < 1) ? 0 : start_no ;
+				return appropriateDataStore.slice(start_no, end_no);
+			}else{
+				return Array();
+			}
         });
+
+        this.selectedGames = ko.computed(function(){
+			if(self.activeTab() == "all"){
+				var appropriateDataStore = ko.unwrap(self.getAppropriateDataStore());
+				var selectedGames = ko.utils.arrayFilter(appropriateDataStore, function(game){
+					return ko.unwrap(game).selected;
+				});
+				return selectedGames;
+			}else{
+				return Array();
+			}
+        });
+
+        this.allSelectedOnPage = ko.computed(function(){
+        	var allSelected = true;
+        	$.each(self.currentPage(), function(idx, elem){
+        		if(elem().selected == false){
+        			allSelected = false;
+        			return;
+        		}
+        	});
+        	return allSelected;
+        });
+
+		/* //Comment out for testing
+		this.filterString = ko.observable(undefined);
+		this.filteredList = ko.computed(function(){
+			if(this.listMode() == "filter" && self.filterString() !== undefined){
+				var termObjects = self.parseTermString(self.filterString());
+
+				var matches = Array();
+				ko.utils.arrayForEach(self.overviewDataStore(), function(game) {
+
+					if(termObjects.and.length > 0){
+						var doesMatch = true;
+
+						for(i = 0; i < termObjects.and.length; i++){
+							var matchTerm = termObjects.and[i].termString;
+							var matchField = termObjects.and[i].field;
+
+							if( matchField == 'ALL' ){
+								var loopMatch = true;
+
+								for(prop in game){
+						        	if(prop == "id"){
+						        		continue;
+						        	}
+
+						        	if( (game[prop] || "").match( new RegExp(matchTerm, "i")) === null ){
+										loopMatch = false;
+										break;
+									}
+						        }
+
+						        if( loopMatch == false){
+						        	doesMatch = false;
+						        	break;
+						        }
+
+							}else{
+								if( (game[matchField] || "").match( new RegExp(matchTerm, "i")) === null ){
+									doesMatch = false;
+									break;
+								}
+							}
+						}
+
+						if( doesMatch == false ){
+							return true;
+						}
+					}
+
+					if(doesMatch == true){
+						matches.push(game);
+						return true;
+					}
+
+					if(termObjects.or.length > 0){
+						var doesMatch = false;
+
+						for(i = 0; i < termObjects.or.length; i++){
+							var matchTerm = termObjects.or[i].termString;
+							var matchField = termObjects.or[i].field;
+
+							if( matchField == 'ALL' ){
+								var loopMatch = false;
+
+								for(prop in game){
+						        	if(prop == "id"){
+						        		continue;
+						        	}
+
+						        	if( (game[prop] || "").match( new RegExp(matchTerm, "i")) ){
+										loopMatch = true;
+										break;
+									}
+						        }
+
+						        if( loopMatch == true){
+						        	doesMatch = true;
+						        	break;
+						        }
+
+							}else{
+								if( (game[matchField] || "").match( new RegExp(matchTerm, "i")) ){
+									doesMatch = true;
+									break;
+								}
+							}
+
+						}
+					}
+
+			        if(doesMatch == true){
+						matches.push(game);
+					}
+			    });
+
+				console.log(matches);
+			    return matches;
+
+			}else{
+				return Array();
+			}
+		});
+		*/
 		
 		window.location.hash = "home";
 		
@@ -127,23 +256,6 @@ $(document).ready(function(){
 				}
 			}
 		});
-		
-		this.currentGameId.subscribe(function(newProductId){
-			if(newProductId){
-				$.getJSON(
-					'api.php/games/' + newProductId,
-					function(data){
-						if( data.results && data.results[0] ){
-							console.log(data.results[0]);
-							self.currentGame(data.results[0]);
-						}
-					}
-				);
-			}else{
-				self.currentGame(false);
-			}
-			
-		}.bind(this));
 
 		this.ajax = function(ajaxOpts){
 			ajaxOpts.complete = function(jqXHR, textStatus){
@@ -154,6 +266,8 @@ $(document).ready(function(){
 		}
 		
 		this.updateGame = function(game){
+			//var index = self.overviewDataStore.indexOf(game);
+
 			self.ajax({
 				type: 'PUT',
 				contentType: 'application/json',
@@ -162,11 +276,24 @@ $(document).ready(function(){
 				data: JSON.stringify(game),
 				success: function(response, textStatus, jqXHR){
 					$.each(response.successObject, function(idx, elem){
-						self.removeGameFromLocalObjects(elem);
-						self.addGameToLocalObjects(elem);
-					});
 
-					self.applySortingToDataStore();
+						var newGameDataObj = elem;
+						console.log(newGameDataObj);
+						$.each(newGameDataObj, function(idx, elem){
+							game[idx] = elem;
+						});
+
+						self.removeGameFromLocalObjects(game);
+						self.addGameToLocalObjects(game);
+					});
+					self.getAppropriateDataStore().notifySubscribers(ko.unwrap(self.getAppropriateDataStore()));
+					//console.log(self.overviewDataStore()[index]);
+
+					//self.applySortingToDataStore();
+
+					//self.overviewDataStore.notifySubscribers(ko.unwrap(self.overviewDataStore));
+					//self.getAppropriateDataStore().notifySubscribers(ko.unwrap(self.getAppropriateDataStore()));
+
 					self.hideModal();
 					console.log(response);
 					self.mostRecentAjaxSuccess(response.msg);
@@ -176,10 +303,13 @@ $(document).ready(function(){
 		}
 		
 		this.massUpdate = function(viewModel, event){
+			var ids = $.map(self.selectedGames(),function(game){
+				return game.id;
+			});
 			self.ajax({
 				type: 'PUT',
 				contentType: 'application/json',
-				url: 'api.php/games/' + JSON.stringify(self.selectedGames()),
+				url: 'api.php/games/' + JSON.stringify(ids),
 				dataType: "json",
 				data: JSON.stringify(self.massUpdateData()),
 				success: function(response, textStatus, jqXHR){
@@ -241,13 +371,13 @@ $(document).ready(function(){
 				var mapped = $.map(game,function(elem, idx){ return elem.id });
 				self.selectedGames.removeAll( mapped );
 			}else{
-				self.overviewDataStore.smartRemove(game);
-				self.activeDataStore.smartRemove(game);
+				self.overviewDataStore.remove(game);
+				//self.activeDataStore.remove(game);
 				//self.gameList.smartRemove(game);
-				self.selectedGames.remove(game.id);			
+				//self.selectedGames.remove(game.id);			
 			}
 
-			self.currentGameId(undefined);
+			//self.currentGameId(undefined);
 		}
 
 		this.addGameToLocalObjects = function(game){
@@ -307,8 +437,7 @@ $(document).ready(function(){
 
 			self.showLoading(1);
 
-			self.currentGameListPage(1);
-			self.loadCurrentGameListPage();
+			self.currentPageNo(1);
 
 			self.showLoading(0);
 		}
@@ -318,41 +447,47 @@ $(document).ready(function(){
 			var elem = event.target,
 				tabTarget = elem.getAttribute("href").replace(/^#/, '');
 			window.location.hash = tabTarget;
-			this.activeTab(tabTarget);
+			self.activeTab(tabTarget);
 		}
 		
 		this.editGameFromList = function(game, event){
-			self.currentGameId(game.id);
+			self.currentGame(game);
+
+			self.ajax({
+				type: 'GET',
+				dataType: 'json',
+				url: 'api.php/games/' + game.id,
+				success: function(response, textStatus, jqXHR){
+					if( response.results && response.results[0] ){
+						
+						var currentGame = self.currentGame();
+						$.each(response.results[0], function(idx, elem){
+							currentGame[idx] = elem;
+						});
+
+						self.currentGame(currentGame);
+						self.showModal("editgame");
+
+					}
+				},
+				error: self.standardOnFailureHandler
+			});
+
 		}
 
-		/*this.rowClicked = function(game, event){
-			var $currentTarget = $(event.target),
-				$target = $(event.target);
-			if ( ($target.data() && $target.data("bind") && $target.data("bind").match(/click:/)) || $target.is("input") ){
-				//We're clicking on something that has its own click handler
-				return true;
-			}else{
-				$currentTarget.find("input:checkbox").click();
-			}
-			console.log(self.selectedGames());
-		}*/
-
-		this.toggleGameSelect = function(game, event){
-			if(self.selectedGames.indexOf(game) == -1){
-				self.selectedGames.push(game);
-			}else{
-				self.selectedGames.remove(game);
-			}
-		}
-
-		this.showModal = function(viewModel, event){
+		this.triggerModal = function(viewModel, event){
 			var $elem = $(event.target);
+			var whichContent = $elem.data("target");
 
-			if($elem.data("target") == "newgame"){
+			if(whichContent == "newgame"){
 				self.newGame(createNewEmptyGame());
 			}
 
-			$('#myModal .modal-content.' + $elem.data("target")).show();
+			self.showModal(whichContent);
+		}
+
+		this.showModal = function(whichContent){
+			$('#myModal .modal-content.' + whichContent).show();
 			$('#myModal').modal('show');
 		}
 
@@ -363,8 +498,12 @@ $(document).ready(function(){
 		}
 
 		this.clearSelection = function(viewModel, event){
-			self.selectedGames.removeAll();
-			self.allSelected(0);
+			
+			ko.utils.arrayForEach(ko.unwrap(self.getAppropriateDataStore()), function(game) {
+				game.selected(false);
+			});
+
+			self.getAppropriateDataStore().notifySubscribers(ko.unwrap(self.getAppropriateDataStore()));
 		}
 
 		this.initOverviewDataStore = function(){
@@ -374,14 +513,57 @@ $(document).ready(function(){
 					url: 'api.php/games/',
 					success: function(response){
 						console.log(response);
-						self.overviewDataStore(response.results)
 
+						//Attach some extra properties
+						$.each(response.results, function(idx, elem){
+							//elem.selected = ko.observable(false);
+							elem.selected = false;
+						});
+
+						self.overviewDataStore($.map(response.results, function(game){
+							return ko.observable(game);
+						}));
+
+						//self.overviewDataStore(response.results)
 						self.showLoading(0);
 					}
 				});
 
 		}
 
+		this.toggleSelectAll = function(gameViewModel, event){
+			var $elem = $(event.target);
+			if($elem.is(":checked")){
+				self.toggleSelectOnCurrentPage(true);
+			}else{
+				self.toggleSelectOnCurrentPage(false);
+			}
+			return true;
+		}
+
+		self.toggleSelectOnCurrentPage = function(doSelect){
+			if(doSelect == true){
+				ko.utils.arrayForEach(self.currentPage(), function(game) {
+					game.selected(true);
+				});
+			}else{
+				ko.utils.arrayForEach(self.currentPage(), function(game) {
+					game.selected(false);
+				});
+			}
+			self.getAppropriateDataStore().notifySubscribers(ko.unwrap(self.getAppropriateDataStore()));
+		}
+
+		this.updateSelected = function(game, event){
+
+			console.log(game);
+        	//Is there a slicker/better way of doing this?
+        	self.getAppropriateDataStore().notifySubscribers(ko.unwrap(self.getAppropriateDataStore()));
+        	//This is essential for the default checked behavior to continue
+        	return true;
+        }
+
+		/* //Deprecated?
 		this.getPageFromDataStore = function(page_no){
 			page_no = page_no || 1;
 			end_no = self.pageSize() * page_no;
@@ -389,21 +571,15 @@ $(document).ready(function(){
 			start_no = end_no - self.pageSize();
 			start_no = (start_no < 1) ? 0 : start_no ;
 			return self.getAppropriateDataStore().slice(start_no, end_no);
-		}
+		}*/
 
 		this.prevGameListPage = function(viewModel, event){
-			self.currentGameListPage( ( self.currentGameListPage() > 1 ? self.currentGameListPage() - 1 : 1) )  ;
-			self.loadCurrentGameListPage();
+			self.currentPageNo( ( self.currentPageNo() > 1 ? self.currentPageNo() - 1 : 1) )  ;
 		}
 
 		this.nextGameListPage = function(viewModel, event){
 			var maxPage = self.currentGameListTotalPages();
-			self.currentGameListPage( ( (self.currentGameListPage() < maxPage) ? self.currentGameListPage() + 1 : self.currentGameListPage()) );
-			self.loadCurrentGameListPage();
-		}
-
-		this.loadCurrentGameListPage = function(){
-			//self.gameList(self.getPageFromDataStore(self.currentGameListPage()));
+			self.currentPageNo( ( (self.currentPageNo() < maxPage) ? self.currentPageNo() + 1 : self.currentPageNo()) );
 		}
 
 		this.parseTermString = function(termString){
@@ -609,8 +785,6 @@ $(document).ready(function(){
 				asc_icon = "glyphicon-triangle-top",
 				desc_icon = "glyphicon-triangle-bottom";
 
-			console.log($elem);
-
 			if( sortField != self.currentGameListSorting().column ){
 				$(".all-games .thead .sorting-icon").removeClass(asc_icon).removeClass(desc_icon);
 			}
@@ -632,10 +806,12 @@ $(document).ready(function(){
 		}
 
 		this.applySortingToDataStore = function(){
-			var sortField = self.currentGameListSorting().column;
-			var sortDir = self.currentGameListSorting().dir;
+
+			var sortField = self.currentGameListSorting().column,
+				sortDir = self.currentGameListSorting().dir,
+				appropriateDataStore = self.getAppropriateDataStore();
 			
-			self.getAppropriateDataStore().sort(function(left, right){
+			appropriateDataStore.sort(function(left, right){
 				var leftField = left[sortField];
 				var rightField = right[sortField];
 
@@ -659,15 +835,20 @@ $(document).ready(function(){
 					return leftField == rightField ? 0 : (leftField > rightField ? -1 : 1) ;
 				}
 			});
-
-			this.loadCurrentGameListPage();
 		}
 
 		this.getAppropriateDataStore = function(){
-			if(self.activeDataStore().length > 0 || self.forceShowActiveDataStore() == true){
-				return self.activeDataStore();
+			if (self.listMode() == "all"){
+				return self.overviewDataStore;
+			}else if (self.listMode() == "filter"){
+				return self.filteredList;
 			}
-			return self.overviewDataStore();
+			if (self.overviewDataStore().length > 0){
+				return self.overviewDataStore;
+			}else{
+				return Array();
+			}
+			
 		}
 
 		this.standardOnFailureHandler = function(jqXHR, textStatus, errorThrown){
@@ -704,7 +885,7 @@ $(document).ready(function(){
 			var $slider = $(".mass-actions"),
 				elemDuration = 200;
 
-			if(selectedGameArray.length && selectedGameArray.length > 0){
+			if(selectedGameArray && selectedGameArray.length && selectedGameArray.length > 0){
 				$slider.show('slide', {direction: 'down'}, elemDuration);
 			}else{
 				$slider.hide('slide', {direction: 'down'}, elemDuration);
@@ -749,24 +930,10 @@ $(document).ready(function(){
 		        self.mostRecentAjaxFailure("");
 		    } 
 		};
-		
-		ko.bindingHandlers.showEditPanel = {
-		    init: function(element, valueAccessor) {
-		        //Do nothing on init
-		    },
-		    update: function(element, valueAccessor) {
-
-		        // On update, fade in/out
-		        var show = valueAccessor();
-		        if(show()){
-					$('#myModal .modal-content.editgame').show();
-					$('#myModal').modal('show');
-		        }
-		    } 
-		};
 
 		this.currentGameListTotalPages = ko.computed(function(){
-			var pageNum = Math.floor(self.getAppropriateDataStore().length / self.pageSize());
+			var appropriateDataStore = ko.unwrap(self.getAppropriateDataStore()),
+				pageNum = Math.floor(appropriateDataStore.length / self.pageSize());
 			return (pageNum > 0) ? pageNum : 1 ;
 		});
 	};

@@ -109,7 +109,7 @@
 			foreach( $games as $game ){
 
 				foreach ($gameData as $prop => $value) {
-					if($prop == "id"){
+					if($prop == "id" || $prop == "selected"){
 						continue;
 					}
 					$game->$prop = $value;
