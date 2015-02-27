@@ -46,8 +46,8 @@
 		  <div class="container">
 			<div class="collapse navbar-collapse">
 			  <ul class="nav navbar-nav">
-				<li class="" data-bind="css { active: activeTab() == 'home' }" ><a href="#home" data-bind="click: setActiveTab">Home</a></li>
-				<li class="" data-bind="css { active: activeTab() == 'all' }"><a href="#all" data-bind="click: setActiveTab">Show All</a></li>
+				<li class="" data-bind="css { active: activeTab() }" ><a href="#home" data-bind="click: setActiveTab">Home</a></li>
+				<li class="" data-bind="css { active: activeTab() }"><a href="#all" data-bind="click: setActiveTab">Show All</a></li>
 				<li class="pull-right"><input autocomplete="off" placeholder="Search" title="Search" class="form-control search" type="text"></li>
 				<li class="new-game-button-container pull-right"><button type="button" data-target="newgame" data-bind="click: triggerModal" class="form-control btn btn-primary">New Game</button></li>
 			  </ul>
@@ -137,6 +137,11 @@
 							<input type="text" class="form-control" id="edit_source" placeholder="Source" data-bind="value: source">
 							<div class="clear"></div>
 						</div>
+												<div class="form-group">
+							<label for="source">Source</label>
+							<input type="text" class="form-control" id="edit_source" placeholder="Source" data-bind="value: source">
+							<div class="clear"></div>
+						</div>
 						<div class="form-group">
 							<label for="platform">Platform</label>
 							<input type="text" class="form-control" id="edit_platform" placeholder="Platform" data-bind="value: platform">
@@ -146,7 +151,7 @@
 				</div>
 				<div class="modal-footer">
 					<button type="button" class="btn btn-danger" data-bind="click: $root.deleteGameFromModal">Delete</button>
-			        <button type="button" class="btn btn-default" data-bind="click: $root.hideModal">Cancel</button>
+			        <button type="button" class="btn btn-default" data-bind="click: $root.cancelUpdateGame">Cancel</button>
 			        <button type="button" class="btn btn-primary" data-bind="click: $root.updateGame">Update</button>
 		      </div>
 			</div>
@@ -248,8 +253,9 @@
 		<script src="https://ajax.googleapis.com/ajax/libs/jquery/1.11.1/jquery.min.js"></script>
 		<script src="https://ajax.googleapis.com/ajax/libs/jquery/1.11.1/jquery.min.js"></script>
 		<script src="js/bootstrap.min.js"></script>
-		<script src="js/knockout-3.2.0.min.js"></script>
-		<!--<script src="js/knockout-3.2.0.debug.js"></script>-->
+		<script src="js/knockout-3.3.0.min.js"></script>
+		<script src="js/knockout.mapping-latest.js"></script>
+		<!--<script src="js/knockout-3.3.0.debug.js"></script>-->
 		<!--<script src="js/typeahead-0.10.5.js"></script>-->
 		<script src="js/jquery-ui.min.js"></script>
 

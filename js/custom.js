@@ -31,6 +31,8 @@ var gameViewModel = undefined;
 			self.forceShowActiveDataStore = ko.observable(false);
 			self.listMode = ko.observable("all");
 
+			self.currentGameCancelData = Array();
+
 			self.currentPage = ko.computed(function(){
 				if(self.activeTab() == "all"){
 					var appropriateDataStore = ko.unwrap(self.getAppropriateDataStore());
@@ -49,7 +51,7 @@ var gameViewModel = undefined;
 				if(self.activeTab() == "all"){
 					var appropriateDataStore = ko.unwrap(self.getAppropriateDataStore());
 					var selectedGames = ko.utils.arrayFilter(appropriateDataStore, function(game){
-						return ko.unwrap(game).selected;
+						return game.selected();
 					});
 					return selectedGames;
 				}else{
@@ -60,7 +62,7 @@ var gameViewModel = undefined;
 	        self.allSelectedOnPage = ko.computed(function(){
 	        	var allSelected = true;
 	        	$.each(self.currentPage(), function(idx, elem){
-	        		if(elem().selected == false){
+	        		if(elem.selected() == false){
 	        			allSelected = false;
 	        			return;
 	        		}
@@ -122,16 +124,21 @@ var gameViewModel = undefined;
 						console.log(response);
 
 						//Attach some extra properties
+						self.overviewDataStore(response.results);
 						$.each(response.results, function(idx, elem){
-							//elem.selected = ko.observable(false);
 							elem.selected = false;
+							elem = ko.mapping.fromJS(elem);
+							response.results[idx] = elem;
+							//elem.selected = false;
 						});
+						self.overviewDataStore(response.results);
 
-						self.overviewDataStore($.map(response.results, function(game){
+						/*self.overviewDataStore($.map(response.results, function(game){
 							return ko.observable(game);
-						}));
+						}));*/
 
-						//self.overviewDataStore(response.results)
+						self.overviewDataStore(response.results);
+						console.log(self.overviewDataStore());
 						self.showLoading(0);
 					}
 				});
@@ -156,8 +163,8 @@ var gameViewModel = undefined;
 							game[idx] = elem;
 						});
 
-						self.removeGameFromLocalObjects(game);
-						self.addGameToLocalObjects(game);
+						//self.removeGameFromLocalObjects(game);
+						//self.addGameToLocalObjects(game);
 					});
 					self.getAppropriateDataStore().notifySubscribers(ko.unwrap(self.getAppropriateDataStore()));
 					//console.log(self.overviewDataStore()[index]);
@@ -485,21 +492,26 @@ var gameViewModel = undefined;
 		}
 		
 		this.editGameFromList = function(game, event){
-			self.currentGame(game);
+			//self.currentGame(game);
+			self.currentGameCancelData = ko.mapping.toJS(game);
 
 			self.ajax({
 				type: 'GET',
 				dataType: 'json',
-				url: 'api.php/games/' + game.id,
+				url: 'api.php/games/' + game.id(),
 				success: function(response, textStatus, jqXHR){
 					if( response.results && response.results[0] ){
-						
-						var currentGame = self.currentGame();
-						$.each(response.results[0], function(idx, elem){
-							currentGame[idx] = elem;
-						});
 
-						self.currentGame(currentGame);
+
+						
+						//var currentGame = self.currentGame();
+						/*$.each(response.results[0], function(idx, elem){
+							currentGame[idx] = elem;
+						});*/
+
+						ko.mapping.fromJS(response.results[0], game);
+
+						self.currentGame(game);
 						self.showModal("editgame");
 
 					}
@@ -507,6 +519,11 @@ var gameViewModel = undefined;
 				error: self.standardOnFailureHandler
 			});
 
+		}
+
+		this.cancelUpdateGame = function(game, event){
+			ko.mapping.fromJS(self.currentGameCancelData, game);
+			self.hideModal();
 		}
 
 		this.triggerModal = function(viewModel, event){
