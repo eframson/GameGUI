@@ -11,7 +11,7 @@ var gameViewModel = undefined;
 			self.currentGame = ko.observable();
 			self.newGame = ko.observable(self.createNewEmptyGame());
 			self.searchTerm = ko.observable();
-			self.activeTab = ko.observable();
+			self.activeTab = ko.observable("");
 			self.gameList = ko.observableArray();
 			self.overviewDataStore = ko.observableArray();
 			self.activeDataStore = ko.observableArray(undefined);
@@ -151,22 +151,32 @@ var gameViewModel = undefined;
 			self.ajax({
 				type: 'PUT',
 				contentType: 'application/json',
-				url: 'api.php/games/' + game.id,
+				url: 'api.php/games/' + game.id(),
 				dataType: "json",
-				data: JSON.stringify(game),
+				data: JSON.stringify(ko.mapping.toJS(game)),
 				success: function(response, textStatus, jqXHR){
-					$.each(response.successObject, function(idx, elem){
+					if(response.success){
+						$.each(response.successObject, function(idx, elem){
 
-						var newGameDataObj = elem;
-						console.log(newGameDataObj);
-						$.each(newGameDataObj, function(idx, elem){
-							game[idx] = elem;
+							var newGameDataObj = elem;
+							console.log(newGameDataObj);
+							$.each(newGameDataObj, function(idx, elem){
+								game[idx](elem);
+							});
+
+							//self.removeGameFromLocalObjects(game);
+							//self.addGameToLocalObjects(game);
 						});
 
-						//self.removeGameFromLocalObjects(game);
-						//self.addGameToLocalObjects(game);
-					});
-					self.getAppropriateDataStore().notifySubscribers(ko.unwrap(self.getAppropriateDataStore()));
+						self.hideModal();
+						console.log(response);
+						self.mostRecentAjaxSuccess(response.msg);
+
+					}else{
+						console.log("IMPLEMENT ERROR HANDLING FOR THIS");
+					}
+					
+					//self.getAppropriateDataStore().notifySubscribers(ko.unwrap(self.getAppropriateDataStore()));
 					//console.log(self.overviewDataStore()[index]);
 
 					//self.applySortingToDataStore();
@@ -174,9 +184,7 @@ var gameViewModel = undefined;
 					//self.overviewDataStore.notifySubscribers(ko.unwrap(self.overviewDataStore));
 					//self.getAppropriateDataStore().notifySubscribers(ko.unwrap(self.getAppropriateDataStore()));
 
-					self.hideModal();
-					console.log(response);
-					self.mostRecentAjaxSuccess(response.msg);
+
 				},
 				error: self.standardOnFailureHandler
 			});
