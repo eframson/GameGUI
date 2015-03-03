@@ -61,28 +61,30 @@
 		  <div class="modal-dialog">
 
 		    <div class="modal-content massupdate">
-		      <div class="modal-header">
-		        <button type="button" class="close" data-bind="click: hideModal"><span aria-hidden="true">&times;</span><span class="sr-only">Close</span></button>
-		        <h4 class="modal-title" id="myModalLabel">Mass Update</h4>
-		      </div>
-		      <div class="modal-body">
-		        <form role="form-horizontal" data-bind="with: massUpdateData">
-					<div class="form-group">
-						<label for="source">Source</label>
-						<input type="text" class="form-control" id="edit_source" placeholder="Source" data-bind="value: source">
-						<div class="clear"></div>
-					</div>
-					<div class="form-group">
-						<label for="platform">Platform</label>
-						<input type="text" class="form-control" id="edit_platform" placeholder="Platform" data-bind="value: platform">
-						<div class="clear"></div>
-					</div>
-				</form>
-		      </div>
-		      <div class="modal-footer">
-		        <button type="button" class="btn btn-default" data-bind="click: hideModal">Cancel</button>
-		        <button type="button" class="btn btn-primary" data-bind="click: massUpdate, text: 'Update ' + selectedGames().length + ' game(s)'"></button>
-		      </div>
+			    <div class="modal-header">
+			        <button type="button" class="close" data-bind="click: hideModal"><span aria-hidden="true">&times;</span><span class="sr-only">Close</span></button>
+			        <h4 class="modal-title" id="myModalLabel">Mass Update</h4>
+			    </div>
+				<div class="modal-body">
+					<div class="ajax-notice bg-success" data-bind="showSuccess: $root.mostRecentAjaxSuccess()"></div>
+					<div class="ajax-notice bg-danger" data-bind="showError: $root.mostRecentAjaxFailure()"></div>
+					<form role="form-horizontal" data-bind="with: massUpdateData">
+						<div class="form-group">
+							<label for="source">Source</label>
+							<input type="text" class="form-control" id="edit_source" placeholder="Source" data-bind="value: source">
+							<div class="clear"></div>
+						</div>
+						<div class="form-group">
+							<label for="platform">Platform</label>
+							<input type="text" class="form-control" id="edit_platform" placeholder="Platform" data-bind="value: platform">
+							<div class="clear"></div>
+						</div>
+					</form>
+				</div>
+				<div class="modal-footer">
+					<button type="button" class="btn btn-default" data-bind="click: hideModal">Cancel</button>
+					<button type="button" class="btn btn-primary" data-bind="click: massUpdate, text: 'Update ' + selectedGames().length + ' game(s)'"></button>
+				</div>
 		    </div>
 
 			<div data-bind="with: newGame" class="modal-content newgame">
@@ -91,6 +93,8 @@
 		        <h4 class="modal-title" id="myModalLabel">Create New Game</h4>
 		      </div>
 		      <div class="modal-body">
+		      	<div class="ajax-notice bg-success" data-bind="showSuccess: $root.mostRecentAjaxSuccess()"></div>
+				<div class="ajax-notice bg-danger" data-bind="showError: $root.mostRecentAjaxFailure()"></div>
 		        <form role="form-horizontal">
 						<div class="form-group">
 							<label for="title">Title</label>
@@ -121,6 +125,8 @@
 			        <h4 class="modal-title" id="myModalLabel">Edit Game</h4>
 		      	</div>
 		      	<div class="modal-body">
+		      		<div class="ajax-notice bg-success" data-bind="showSuccess: $root.mostRecentAjaxSuccess()"></div>
+					<div class="ajax-notice bg-danger" data-bind="showError: $root.mostRecentAjaxFailure()"></div>
 					<form role="form-horizontal">
 						<div class="form-group">
 							<label for="id">Id</label>
@@ -133,11 +139,6 @@
 							<div class="clear"></div>
 						</div>
 						<div class="form-group">
-							<label for="source">Source</label>
-							<input type="text" class="form-control" id="edit_source" placeholder="Source" data-bind="value: source">
-							<div class="clear"></div>
-						</div>
-												<div class="form-group">
 							<label for="source">Source</label>
 							<input type="text" class="form-control" id="edit_source" placeholder="Source" data-bind="value: source">
 							<div class="clear"></div>

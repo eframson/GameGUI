@@ -146,7 +146,6 @@ var gameViewModel = undefined;
 		}
 
 		this.updateGame = function(game){
-			//var index = self.overviewDataStore.indexOf(game);
 
 			self.ajax({
 				type: 'PUT',
@@ -171,9 +170,11 @@ var gameViewModel = undefined;
 						self.hideModal();
 						console.log(response);
 						self.mostRecentAjaxSuccess(response.msg);
+						self.applySortingToDataStore();
 
 					}else{
-						console.log("IMPLEMENT ERROR HANDLING FOR THIS");
+						console.log(response);
+						self.mostRecentAjaxFailure(response.msg);
 					}
 					
 					//self.getAppropriateDataStore().notifySubscribers(ko.unwrap(self.getAppropriateDataStore()));
@@ -238,7 +239,7 @@ var gameViewModel = undefined;
 			self.ajax({
 				type: 'DELETE',
 				contentType: 'application/json',
-				url: 'api.php/games/' + game.id,
+				url: 'api.php/games/' + game.id(),
 				dataType: "json",
 				success: function(response, textStatus, jqXHR){
 					if(typeof onSuccess === 'function'){
@@ -437,12 +438,26 @@ var gameViewModel = undefined;
 		});
 
 		this.deleteGameFromModal = function(game){
-			self.deleteGame(game, function(response, textStatus, jqXHR){
-				self.mostRecentAjaxSuccess(response.msg);
-				self.removeGameFromLocalObjects(game);
-				self.applySortingToDataStore();
-				self.hideModal();
-			});
+					self.hideModal();
+					self.removeGameFromLocalObjects(game);
+					self.debugLogDataStore(0,10);
+					
+					//self.applySortingToDataStore();
+			/*self.deleteGame(game, function(response, textStatus, jqXHR){
+
+				if(response.success){
+
+					self.hideModal();
+					self.mostRecentAjaxSuccess(response.msg);
+					self.removeGameFromLocalObjects(game);
+					self.applySortingToDataStore();
+
+				}else{
+					console.log(response);
+					self.mostRecentAjaxFailure(response.msg);
+				}
+
+			});*/
 		}
 
 		this.deleteGameFromList = function(game, event){
@@ -836,8 +851,8 @@ var gameViewModel = undefined;
 				appropriateDataStore = self.getAppropriateDataStore();
 			
 			appropriateDataStore.sort(function(left, right){
-				var leftField = left[sortField];
-				var rightField = right[sortField];
+				var leftField = left[sortField]();
+				var rightField = right[sortField]();
 
 				if(sortField == "id"){
 					leftField = parseInt(leftField);
@@ -907,6 +922,17 @@ var gameViewModel = undefined;
 			};
 		}
 
+		this.debugLogDataStore = function(idx_start, idx_end){
+			idx_end = idx_end || idx_start;
+
+			var sliced = self.overviewDataStore.slice(idx_start, idx_end),
+				outputReadyList = Array();
+			$.each(sliced, function(idx, elem){
+				outputReadyList.push(ko.mapping.toJS(elem));
+			});
+			console.log(outputReadyList);
+		}
+
 		ko.bindingHandlers.showSuccess = {
 		    init: function(element, valueAccessor) {
 		        $(element).hide();
@@ -917,7 +943,6 @@ var gameViewModel = undefined;
 		        if(message && message != ""){
 					$(element).text(message).slideDown(500).delay(3000).slideUp(500);	
 		        }
-		        self.mostRecentAjaxSuccess("");
 		    } 
 		};
 		
@@ -931,7 +956,6 @@ var gameViewModel = undefined;
 		        if(message && message != ""){
 					$(element).text(message).slideDown(500).delay(6000).slideUp(500);	
 		        }
-		        self.mostRecentAjaxFailure("");
 		    } 
 		};
 	};
