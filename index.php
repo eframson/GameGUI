@@ -31,13 +31,12 @@
 		<![endif]-->
 	</head>
 	<!-- @TODOs
-		- Make search bar look through local data store instead of querying each time
 		- Put in some content in "home" so one tab's content can be easily distinguished from another
 		- Make Cmd/Ctrl + F a shortcut for search rather than default Chrome/FF functionality
-		- Implement per-page select all + actual select all functionality
 		- Add "X" icon to filter box so results can be easily cleared
 		- Make pagination control width/spacing static so page # doesn't vary spacing
-		- Add per-page "select all" functionality
+		- Within ajax success callback, actually check for response.success
+		- Display error/success message even if it's the same as the last error/success message
 
 		- BUG: Adding game from the homepage displays "Show All page"
 	-->
@@ -45,9 +44,11 @@
 		<div class="navbar navbar-inverse navbar-fixed-top" role="navigation">
 		  <div class="container">
 			<div class="collapse navbar-collapse">
-			  <ul class="nav navbar-nav">
+			  <ul class="nav navbar-nav left">
 				<li data-bind="css: { active: activeTab() == 'home' }" ><a href="#home" data-bind="click: setActiveTab">Home</a></li>
 				<li data-bind="css: { active: activeTab() == 'all' }" ><a href="#all" data-bind="click: setActiveTab">Show All</a></li>
+			  </ul>
+			  <ul class="nav navbar-nav right">
 				<li class="pull-right"><input autocomplete="off" placeholder="Search" title="Search" class="form-control search" type="text"></li>
 				<li class="new-game-button-container pull-right"><button type="button" data-target="newgame" data-bind="click: triggerModal" class="form-control btn btn-primary">New Game</button></li>
 			  </ul>

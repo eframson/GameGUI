@@ -30,6 +30,7 @@ var gameViewModel = undefined;
 			self.activeRequests = ko.observable(0);
 			self.forceShowActiveDataStore = ko.observable(false);
 			self.listMode = ko.observable("all");
+			self.filterString = ko.observable(undefined);
 
 			self.currentGameCancelData = Array();
 
@@ -38,7 +39,7 @@ var gameViewModel = undefined;
 					var appropriateDataStore = ko.unwrap(self.getAppropriateDataStore());
 					var page_no = self.currentPageNo();
 					end_no = self.pageSize() * page_no;
-					end_no = (end_no < appropriateDataStore.length) ? end_no : appropriateDataStore.length ;
+					end_no = (end_no < appropriateDataStore.length) ? end_no : appropriateDataStore.length - 1;
 					start_no = end_no - self.pageSize();
 					start_no = (start_no < 1) ? 0 : start_no ;
 					return appropriateDataStore.slice(start_no, end_no);
@@ -49,7 +50,7 @@ var gameViewModel = undefined;
 
 	        self.selectedGames = ko.computed(function(){
 				if(self.activeTab() == "all"){
-					var appropriateDataStore = ko.unwrap(self.getAppropriateDataStore());
+					var appropriateDataStore = ko.unwrap(self.overviewDataStore());
 					var selectedGames = ko.utils.arrayFilter(appropriateDataStore, function(game){
 						return game.selected();
 					});
@@ -61,23 +62,24 @@ var gameViewModel = undefined;
 
 	        self.allSelectedOnPage = ko.computed(function(){
 	        	var allSelected = true;
-	        	$.each(self.currentPage(), function(idx, elem){
-	        		if(elem.selected() == false){
-	        			allSelected = false;
-	        			return;
-	        		}
-	        	});
+	        	if(self.currentPage().length > 0){
+		        	$.each(self.currentPage(), function(idx, elem){
+		        		if(elem.selected() == false){
+		        			allSelected = false;
+		        			return;
+		        		}
+		        	});
+	        	}else{
+	        		allSelected = false;
+	        	}
+
 	        	return allSelected;
 	        });
 
 			self.allSelected.subscribe(function(val){
-				console.log("changed!");
 				if(val && val != 0){
-					console.log("select all");
 					self.selectedGames( ko.utils.arrayMap( self.gameList(), function(item){ return item.id; } ) );
-					//self.selectedGames.push("11");
 				}else{
-					console.log("remove all");
 					self.selectedGames.removeAll();
 				}
 				
@@ -112,6 +114,14 @@ var gameViewModel = undefined;
 				return (pageNum > 0) ? pageNum : 1 ;
 			});
 
+			self.filteredList = ko.computed(function(){
+				if(self.listMode() == "filter" && self.filterString() !== undefined){
+					return self.getFilteredDataStore(self.filterString());
+				}else{
+					return Array();
+				}
+			});
+
 		}
 
 
@@ -121,7 +131,6 @@ var gameViewModel = undefined;
 					dataType: "json",
 					url: 'api.php/games/',
 					success: function(response){
-						console.log(response);
 
 						//Attach some extra properties
 						self.overviewDataStore(response.results);
@@ -138,11 +147,83 @@ var gameViewModel = undefined;
 						}));*/
 
 						self.overviewDataStore(response.results);
-						console.log(self.overviewDataStore());
 						self.showLoading(0);
 					}
 				});
 
+		}
+
+		this.createGame = function(){
+			self.ajax({
+				type: 'POST',
+				contentType: 'application/json',
+				url: 'api.php/games',
+				dataType: "json",
+				data: JSON.stringify(self.newGame()),
+				success: function(response, textStatus, jqXHR){
+					self.addGameToLocalObjects(response.successObject);
+					self.applySortingToDataStore();
+					self.hideModal();
+					console.log(response);
+					self.mostRecentAjaxSuccess(response.msg);
+					self.newGame(self.createNewEmptyGame())
+				},
+				error: self.standardOnFailureHandler
+			});
+		}
+
+		this.deleteGame = function(game, onSuccess, onFailure){
+
+			var gameIds;
+			if($.isArray(game)){
+				gameIds = JSON.stringify(game);
+			}else if (typeof game === 'object'){
+				gameIds = game.id();
+			}else{
+				console.log("Could not parse game obj/array");
+				return;
+			}
+			
+			self.ajax({
+				type: 'DELETE',
+				contentType: 'application/json',
+				url: 'api.php/games/' + gameIds,
+				dataType: "json",
+				success: function(response, textStatus, jqXHR){
+					if(typeof onSuccess === 'function'){
+						onSuccess(response, textStatus, jqXHR);
+					}
+				},
+				error: function(jqXHR, textStatus, errorThrown){
+					if(typeof onFailure === 'function'){
+						onFailure(jqXHR, textStatus, errorThrown);
+					}else{
+						self.standardOnFailureHandler(jqXHR, textStatus, errorThrown);
+					}
+				}
+			});
+		}
+		
+		this.massDelete = function(viewModel, event){
+			
+			var ids = $.map(self.selectedGames(),function(game){
+				return game.id;
+			});
+
+			self.deleteGame(ids, function(response, textStatus, jqXHR){
+
+				if(response.success == 1){
+
+					self.mostRecentAjaxSuccess(response.msg);
+					self.removeGameFromLocalObjects(self.selectedGames());
+					//self.debugLogDataStore();
+
+				}else{
+					console.log(response);
+					self.mostRecentAjaxFailure(response.msg);
+				}
+
+			});
 		}
 
 		this.updateGame = function(game){
@@ -154,7 +235,7 @@ var gameViewModel = undefined;
 				dataType: "json",
 				data: JSON.stringify(ko.mapping.toJS(game)),
 				success: function(response, textStatus, jqXHR){
-					if(response.success){
+					if(response.success == 1){
 						$.each(response.successObject, function(idx, elem){
 
 							var newGameDataObj = elem;
@@ -163,8 +244,6 @@ var gameViewModel = undefined;
 								game[idx](elem);
 							});
 
-							//self.removeGameFromLocalObjects(game);
-							//self.addGameToLocalObjects(game);
 						});
 
 						self.hideModal();
@@ -176,15 +255,6 @@ var gameViewModel = undefined;
 						console.log(response);
 						self.mostRecentAjaxFailure(response.msg);
 					}
-					
-					//self.getAppropriateDataStore().notifySubscribers(ko.unwrap(self.getAppropriateDataStore()));
-					//console.log(self.overviewDataStore()[index]);
-
-					//self.applySortingToDataStore();
-
-					//self.overviewDataStore.notifySubscribers(ko.unwrap(self.overviewDataStore));
-					//self.getAppropriateDataStore().notifySubscribers(ko.unwrap(self.getAppropriateDataStore()));
-
 
 				},
 				error: self.standardOnFailureHandler
@@ -216,169 +286,6 @@ var gameViewModel = undefined;
 			});
 		}
 		
-		this.createGame = function(){
-			self.ajax({
-				type: 'POST',
-				contentType: 'application/json',
-				url: 'api.php/games',
-				dataType: "json",
-				data: JSON.stringify(self.newGame()),
-				success: function(response, textStatus, jqXHR){
-					self.addGameToLocalObjects(response.successObject);
-					self.applySortingToDataStore();
-					self.hideModal();
-					console.log(response);
-					self.mostRecentAjaxSuccess(response.msg);
-					self.newGame(self.createNewEmptyGame())
-				},
-				error: self.standardOnFailureHandler
-			});
-		}
-
-		this.deleteGame = function(game, onSuccess, onFailure){
-			self.ajax({
-				type: 'DELETE',
-				contentType: 'application/json',
-				url: 'api.php/games/' + game.id(),
-				dataType: "json",
-				success: function(response, textStatus, jqXHR){
-					if(typeof onSuccess === 'function'){
-						onSuccess(response, textStatus, jqXHR);
-					}
-				},
-				error: function(jqXHR, textStatus, errorThrown){
-					if(typeof onFailure === 'function'){
-						onFailure(jqXHR, textStatus, errorThrown);
-					}else{
-						self.standardOnFailureHandler(jqXHR, textStatus, errorThrown);
-					}
-				}
-			});
-		}
-		
-		this.massDelete = function(viewModel, event){
-			self.ajax({
-				type: 'DELETE',
-				contentType: 'application/json',
-				url: 'api.php/games/' + JSON.stringify(self.selectedGames()),
-				dataType: "json",
-				success: function(response, textStatus, jqXHR){
-					var idsToDelete = [];
-					$.each(self.selectedGames(), function(idx, elem){
-						idsToDelete.push( {id: elem} );
-					});
-					self.removeGameFromLocalObjects(idsToDelete);
-					self.applySortingToDataStore();
-					console.log(response);
-					self.mostRecentAjaxSuccess(response.msg);
-				},
-				error: self.standardOnFailureHandler
-			});
-		}
-
-		/* //Comment out for testing
-		this.filterString = ko.observable(undefined);
-		this.filteredList = ko.computed(function(){
-			if(this.listMode() == "filter" && self.filterString() !== undefined){
-				var termObjects = self.parseTermString(self.filterString());
-
-				var matches = Array();
-				ko.utils.arrayForEach(self.overviewDataStore(), function(game) {
-
-					if(termObjects.and.length > 0){
-						var doesMatch = true;
-
-						for(i = 0; i < termObjects.and.length; i++){
-							var matchTerm = termObjects.and[i].termString;
-							var matchField = termObjects.and[i].field;
-
-							if( matchField == 'ALL' ){
-								var loopMatch = true;
-
-								for(prop in game){
-						        	if(prop == "id"){
-						        		continue;
-						        	}
-
-						        	if( (game[prop] || "").match( new RegExp(matchTerm, "i")) === null ){
-										loopMatch = false;
-										break;
-									}
-						        }
-
-						        if( loopMatch == false){
-						        	doesMatch = false;
-						        	break;
-						        }
-
-							}else{
-								if( (game[matchField] || "").match( new RegExp(matchTerm, "i")) === null ){
-									doesMatch = false;
-									break;
-								}
-							}
-						}
-
-						if( doesMatch == false ){
-							return true;
-						}
-					}
-
-					if(doesMatch == true){
-						matches.push(game);
-						return true;
-					}
-
-					if(termObjects.or.length > 0){
-						var doesMatch = false;
-
-						for(i = 0; i < termObjects.or.length; i++){
-							var matchTerm = termObjects.or[i].termString;
-							var matchField = termObjects.or[i].field;
-
-							if( matchField == 'ALL' ){
-								var loopMatch = false;
-
-								for(prop in game){
-						        	if(prop == "id"){
-						        		continue;
-						        	}
-
-						        	if( (game[prop] || "").match( new RegExp(matchTerm, "i")) ){
-										loopMatch = true;
-										break;
-									}
-						        }
-
-						        if( loopMatch == true){
-						        	doesMatch = true;
-						        	break;
-						        }
-
-							}else{
-								if( (game[matchField] || "").match( new RegExp(matchTerm, "i")) ){
-									doesMatch = true;
-									break;
-								}
-							}
-
-						}
-					}
-
-			        if(doesMatch == true){
-						matches.push(game);
-					}
-			    });
-
-				console.log(matches);
-			    return matches;
-
-			}else{
-				return Array();
-			}
-		});
-		*/
-		
 		$('.search').autocomplete({
 			source: function( request, response ){
 				/*$.getJSON(
@@ -399,20 +306,20 @@ var gameViewModel = undefined;
 					}
 				);*/
 
-				response($.map(self.filterDataStore("title|" + request.term + " || source|" + request.term), function( game ){
+				response($.map(self.getFilteredDataStore("title|" + request.term + " || source|" + request.term), function( game ){
 					return {
-						label: game.title + " (" + game.source + ")",
-						value: game.id
+						label: game.title() + " (" + game.source() + ")",
+						value: game.id()
 					}
 				}));
-
 			},
 			select: function(event, ui){
 				event.preventDefault();
 				if(ui.item.value != "#"){
 					$('.search').val(ui.item.label);
-					self.currentGameId(ui.item.value);
+					var game = self.getGameById(ui.item.value);
 					self.searchTerm(false);
+					self.editGameFromList(game);
 				}
 			},
 			focus: function(event, ui){
@@ -429,8 +336,9 @@ var gameViewModel = undefined;
 		$('.search').keydown(function(event){
 			var $this=$(this);
 			if(event.keyCode == 40){ //Down arrow
+				event.preventDefault();
 				if( self.searchTerm() ){
-					$this.siblings("#container").children(".ui-autocomplete:hidden").show();
+					$this.parents(".navbar-nav").siblings("#container").children(".ui-autocomplete:hidden").show();
 				}else{
 					//$this.autocomplete("search");
 				}
@@ -438,26 +346,22 @@ var gameViewModel = undefined;
 		});
 
 		this.deleteGameFromModal = function(game){
-					self.hideModal();
-					self.removeGameFromLocalObjects(game);
-					self.debugLogDataStore(0,10);
-					
-					//self.applySortingToDataStore();
-			/*self.deleteGame(game, function(response, textStatus, jqXHR){
+
+			self.deleteGame(game, function(response, textStatus, jqXHR){
 
 				if(response.success){
 
 					self.hideModal();
 					self.mostRecentAjaxSuccess(response.msg);
 					self.removeGameFromLocalObjects(game);
-					self.applySortingToDataStore();
+					//self.debugLogDataStore();
 
 				}else{
 					console.log(response);
 					self.mostRecentAjaxFailure(response.msg);
 				}
 
-			});*/
+			});
 		}
 
 		this.deleteGameFromList = function(game, event){
@@ -466,27 +370,6 @@ var gameViewModel = undefined;
 				self.removeGameFromLocalObjects(game);
 				self.applySortingToDataStore();
 			});
-		}
-
-		this.removeGameFromLocalObjects = function(game){
-			if( game instanceof Array ){
-				self.overviewDataStore.smartRemoveAll(game);
-				self.activeDataStore.smartRemoveAll(game);
-				//self.gameList.smartRemoveAll(game);
-				var mapped = $.map(game,function(elem, idx){ return elem.id });
-				self.selectedGames.removeAll( mapped );
-			}else{
-				self.overviewDataStore.remove(game);
-				//self.activeDataStore.remove(game);
-				//self.gameList.smartRemove(game);
-				//self.selectedGames.remove(game.id);			
-			}
-
-			//self.currentGameId(undefined);
-		}
-
-		this.addGameToLocalObjects = function(game){
-			self.overviewDataStore.push(game);
 		}
 
 		this.showHome = function(){
@@ -516,6 +399,7 @@ var gameViewModel = undefined;
 		
 		this.editGameFromList = function(game, event){
 			//self.currentGame(game);
+			console.log(game);
 			self.currentGameCancelData = ko.mapping.toJS(game);
 
 			self.ajax({
@@ -704,112 +588,123 @@ var gameViewModel = undefined;
 			var $elem = $(event.target);
 
 			if( event.keyCode == 13 ){
-				var filteredResults = self.filterDataStore($elem.val());
+				var val = $elem.val();
+				if(val && val != ""){
+					self.filterString($elem.val());
+					self.listMode("filter");
+				}else{
+					self.filterString(undefined);
+					self.listMode("all");
+				}
+				
+				/*var filteredResults = self.filterDataStore($elem.val());
 				if(filteredResults.length == 0){
 					self.forceShowActiveDataStore(true);
 				}
 				self.activeDataStore(filteredResults);
-				this.applySortingToDataStore();
+				this.applySortingToDataStore();*/
 			}
 		}
 
-		this.filterDataStore = function(filterString){
-			if (filterString === undefined){
-				return this.overviewDataStore();
-			}
+		this.getFilteredDataStore = function(filterString){
+			if(filterString !== undefined){
+				
+				var termObjects = self.parseTermString(filterString);
 
-			var termObjects = self.parseTermString(filterString);
-			
-			var matches = Array();
-			ko.utils.arrayForEach(self.overviewDataStore(), function(game) {
+				var matches = Array();
+				ko.utils.arrayForEach(self.overviewDataStore(), function(game) {
+					var gameArray = ko.mapping.toJS(game);
 
-				if(termObjects.and.length > 0){
-					var doesMatch = true;
+					if(termObjects.and.length > 0){
+						var doesMatch = true;
 
-					for(i = 0; i < termObjects.and.length; i++){
-						var matchTerm = termObjects.and[i].termString;
-						var matchField = termObjects.and[i].field;
+						for(i = 0; i < termObjects.and.length; i++){
+							var matchTerm = termObjects.and[i].termString;
+							var matchField = termObjects.and[i].field;
 
-						if( matchField == 'ALL' ){
-							var loopMatch = true;
+							if( matchField == 'ALL' ){
+								var loopMatch = true;
 
-							for(prop in game){
-					        	if(prop == "id"){
-					        		continue;
-					        	}
+								for(prop in gameArray){
+						        	if(prop == "id"){
+						        		continue;
+						        	}
 
-					        	if( (game[prop] || "").match( new RegExp(matchTerm, "i")) === null ){
-									loopMatch = false;
+						        	if( (gameArray[prop] || "").match( new RegExp(matchTerm, "i")) === null ){
+										loopMatch = false;
+										break;
+									}
+						        }
+
+						        if( loopMatch == false){
+						        	doesMatch = false;
+						        	break;
+						        }
+
+							}else{
+								if( (gameArray[matchField] || "").match( new RegExp(matchTerm, "i")) === null ){
+									doesMatch = false;
 									break;
 								}
-					        }
-
-					        if( loopMatch == false){
-					        	doesMatch = false;
-					        	break;
-					        }
-
-						}else{
-							if( (game[matchField] || "").match( new RegExp(matchTerm, "i")) === null ){
-								doesMatch = false;
-								break;
 							}
+						}
+
+						if( doesMatch == false ){
+							return true;
 						}
 					}
 
-					if( doesMatch == false ){
+					if(doesMatch == true){
+						matches.push(game);
 						return true;
 					}
-				}
 
-				if(doesMatch == true){
-					matches.push(game);
-					return true;
-				}
+					if(termObjects.or.length > 0){
+						var doesMatch = false;
 
-				if(termObjects.or.length > 0){
-					var doesMatch = false;
+						for(i = 0; i < termObjects.or.length; i++){
+							var matchTerm = termObjects.or[i].termString;
+							var matchField = termObjects.or[i].field;
 
-					for(i = 0; i < termObjects.or.length; i++){
-						var matchTerm = termObjects.or[i].termString;
-						var matchField = termObjects.or[i].field;
+							if( matchField == 'ALL' ){
+								var loopMatch = false;
 
-						if( matchField == 'ALL' ){
-							var loopMatch = false;
+								for(prop in gameArray){
+						        	if(prop == "id"){
+						        		continue;
+						        	}
 
-							for(prop in game){
-					        	if(prop == "id"){
-					        		continue;
-					        	}
+						        	if( (gameArray[prop] || "").match( new RegExp(matchTerm, "i")) ){
+										loopMatch = true;
+										break;
+									}
+						        }
 
-					        	if( (game[prop] || "").match( new RegExp(matchTerm, "i")) ){
-									loopMatch = true;
+						        if( loopMatch == true){
+						        	doesMatch = true;
+						        	break;
+						        }
+
+							}else{
+								if( (gameArray[matchField] || "").match( new RegExp(matchTerm, "i")) ){
+									doesMatch = true;
 									break;
 								}
-					        }
-
-					        if( loopMatch == true){
-					        	doesMatch = true;
-					        	break;
-					        }
-
-						}else{
-							if( (game[matchField] || "").match( new RegExp(matchTerm, "i")) ){
-								doesMatch = true;
-								break;
 							}
+
 						}
-
 					}
-				}
 
-		        if(doesMatch == true){
-					matches.push(game);
-				}
-		    });
+			        if(doesMatch == true){
+						matches.push(game);
+					}
+			    });
 
-			console.log(matches);
-		    return matches;
+			    return matches;
+
+			}else{
+				return Array();
+			}
 		}
 
 		this.updateSortingField = function(viewModel, event){
@@ -896,6 +791,18 @@ var gameViewModel = undefined;
 			
 		}
 
+		this.removeGameFromLocalObjects = function(games){
+			if( games instanceof Array ){
+				self.overviewDataStore.removeAll(games);
+			}else{
+				self.overviewDataStore.remove(games);
+			}
+		}
+
+		this.addGameToLocalObjects = function(game){
+			self.overviewDataStore.push(game);
+		}
+
 		this.ajax = function(ajaxOpts){
 			ajaxOpts.complete = function(jqXHR, textStatus){
 				self.activeRequests( self.activeRequests() - 1 );
@@ -923,6 +830,10 @@ var gameViewModel = undefined;
 		}
 
 		this.debugLogDataStore = function(idx_start, idx_end){
+			if(idx_start === undefined && idx_end === undefined){
+				idx_start = 0;
+				idx_end = self.overviewDataStore().length - 1;
+			}
 			idx_end = idx_end || idx_start;
 
 			var sliced = self.overviewDataStore.slice(idx_start, idx_end),
@@ -931,6 +842,14 @@ var gameViewModel = undefined;
 				outputReadyList.push(ko.mapping.toJS(elem));
 			});
 			console.log(outputReadyList);
+		}
+
+		this.getGameById = function(id){
+			var results = $.grep(self.overviewDataStore(),function(elem, idx){
+				return (elem.id() === id);
+			});
+			//Should only be one anyway, but just to be sure...
+			return results[0];
 		}
 
 		ko.bindingHandlers.showSuccess = {

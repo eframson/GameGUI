@@ -139,7 +139,12 @@
 	
 	function deleteGame($id){
 	
-		$ids = json_decode(($id));
+		$ids = json_decode($id);
+
+		if($ids == null){
+			showError("No IDs received");
+			return;
+		}
 
 		if(!is_array($ids)){
 			$ids = array($ids);

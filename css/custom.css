@@ -20,13 +20,8 @@ button:focus {
   text-align: center;
 }
 
-.navbar-nav {
-	width: 1040px;
-}
-
-.navbar-collapse {
-	float: left;
-	width: 1000px;
+.navbar-nav.right {
+	float: right;
 }
 
 .navbar-collapse .search {
