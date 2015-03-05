@@ -42,6 +42,8 @@
 		- Create class for Response objects
 		- Condense deleteGameFromModal + deleteGameFromtList, as they are 90% the same code
 		- Figure out how to handle mass updates of "set x properties to y, ignore z properties" VS. "clear values of x properties"
+		- BUG: filter + mass update
+		- Re-sort list on partial update
 	-->
 	<body>
 		<div class="navbar navbar-inverse navbar-fixed-top" role="navigation">
@@ -256,10 +258,9 @@
 		================================================== -->
 		<!-- Placed at the end of the document so the pages load faster -->
 		<script src="https://ajax.googleapis.com/ajax/libs/jquery/1.11.1/jquery.min.js"></script>
-		<script src="https://ajax.googleapis.com/ajax/libs/jquery/1.11.1/jquery.min.js"></script>
 		<script src="js/bootstrap.min.js"></script>
-		<script src="js/knockout-3.3.0.min.js"></script>
-		<!--<script src="js/knockout-3.3.0.debug.js"></script>-->
+		<!--<script src="js/knockout-3.3.0.min.js"></script>-->
+		<script src="js/knockout-3.3.0.debug.js"></script>
 		<script src="js/knockout.mapping-latest.js"></script>
 		<!--<script src="js/typeahead-0.10.5.js"></script>-->
 		<script src="js/jquery-ui.min.js"></script>

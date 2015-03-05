@@ -14,7 +14,6 @@ var gameViewModel = undefined;
 			self.activeTab = ko.observable("");
 			self.gameList = ko.observableArray();
 			self.overviewDataStore = ko.observableArray();
-			self.activeDataStore = ko.observableArray(undefined);
 			self.showLoading = ko.observable(1);
 			self.mostRecentAjaxSuccess = ko.observable("");
 			self.mostRecentAjaxFailure = ko.observable("");
@@ -28,9 +27,8 @@ var gameViewModel = undefined;
 			self.currentGameListSorting = ko.observable({ column: "title", dir: "asc"});
 			self.sortNullsLast = ko.observable(true);
 			self.activeRequests = ko.observable(0);
-			self.forceShowActiveDataStore = ko.observable(false);
 			self.listMode = ko.observable("all");
-			self.filterString = ko.observable(undefined);
+			self.filteredList = ko.observable();
 
 			self.currentGameCancelData = Array();
 
@@ -113,15 +111,6 @@ var gameViewModel = undefined;
 					pageNum = Math.floor(appropriateDataStore.length / self.pageSize());
 				return (pageNum > 0) ? pageNum : 1 ;
 			});
-
-			self.filteredList = ko.computed(function(){
-				if(self.listMode() == "filter" && self.filterString() !== undefined){
-					return self.getFilteredDataStore(self.filterString());
-				}else{
-					return Array();
-				}
-			});
-
 		}
 
 
@@ -544,7 +533,7 @@ var gameViewModel = undefined;
 					game.selected(false);
 				});
 			}
-			self.getAppropriateDataStore().notifySubscribers(ko.unwrap(self.getAppropriateDataStore()));
+			//self.getAppropriateDataStore().notifySubscribers(ko.unwrap(self.getAppropriateDataStore()));
 		}
 
 		this.updateSelected = function(game, event){
@@ -650,19 +639,12 @@ var gameViewModel = undefined;
 			if( event.keyCode == 13 ){
 				var val = $elem.val();
 				if(val && val != ""){
-					self.filterString($elem.val());
+					self.filteredList(self.getFilteredDataStore(val));
 					self.listMode("filter");
 				}else{
-					self.filterString(undefined);
+					self.filteredList(undefined);
 					self.listMode("all");
 				}
-				
-				/*var filteredResults = self.filterDataStore($elem.val());
-				if(filteredResults.length == 0){
-					self.forceShowActiveDataStore(true);
-				}
-				self.activeDataStore(filteredResults);
-				this.applySortingToDataStore();*/
 			}
 		}
 
@@ -686,7 +668,7 @@ var gameViewModel = undefined;
 								var loopMatch = true;
 
 								for(prop in gameArray){
-						        	if(prop == "id"){
+						        	if(prop == "id" || prop == "selected"){
 						        		continue;
 						        	}
 
@@ -730,7 +712,7 @@ var gameViewModel = undefined;
 								var loopMatch = false;
 
 								for(prop in gameArray){
-						        	if(prop == "id"){
+						        	if(prop == "id" || prop == "selected"){
 						        		continue;
 						        	}
 
@@ -803,7 +785,8 @@ var gameViewModel = undefined;
 
 			var sortField = self.currentGameListSorting().column,
 				sortDir = self.currentGameListSorting().dir,
-				appropriateDataStore = self.getAppropriateDataStore();
+				//appropriateDataStore = self.getAppropriateDataStore();
+				appropriateDataStore = self.overviewDataStore;
 			
 			appropriateDataStore.sort(function(left, right){
 				var leftField = left[sortField]();
