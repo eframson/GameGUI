@@ -14,38 +14,221 @@
 	
 	$app = new \Slim\Slim();
 
-	$app->get('/games', 'getGames');
-	$app->get('/games/', 'getGames');
-	$app->get('/games/:id',	'getGame');
-	$app->get('/games/search/:query', 'findGame');
+	$app->get('/games', 'getAllGames');
+	$app->get('/games/', 'getAllGames');
+
+	$app->get('/games/:id',	'getGamesByIds');
+	
 	$app->post('/games', 'addGame');
-	$app->put('/games/:id', 'updateGame');
+
+	$app->put('/games', 'updateGame');
+	$app->put('/games/', 'updateGame');
+
 	$app->delete('/games/:id',	'deleteGame');
+
+	//$app->get('/games/search/:query', 'findGame');
 
 	$app->run();
 	
-	function getGames(){
-		$results = Model::factory('GameEntity')
-				->order_by_asc('title')
-				->find_many();
+	function getAllGames(){
+		try{
+			//$results should be an array of GameEntity objects
+			$results = Model::factory('GameEntity')
+					->order_by_asc('title')
+					->find_many();
 
-		showResults($results);
+			$data = array();
+			foreach($results as $idx => $game){
+				$data["games"][] = $game->as_array();
+			}
+
+			showResponse("success", $data);
+		}catch(Exception $e){
+			showResponse("error", array(), $e->getMessage());
+		}
 	}
 	
-	function getGame($id){
-		$ids = json_decode(($id));
+	function getGamesByIds($id){
+		
+		$ids = json_decode($id);
 
-		if(!is_array($ids)){
-			$ids = array($ids);
-		}
+		if($ids == null){
+			showResponse("fail", array(), "No IDs received");
+		}else{
 
-		$results = Model::factory('GameEntity')
+			if(!is_array($ids)){
+				$ids = array($ids);
+			}
+
+			try{
+
+				$results = Model::factory('GameEntity')
 				    ->where_in('id', $ids)
 				    ->find_many();
-					
-		showResults($results);
+
+				$data = array();
+				foreach($results as $idx => $result){
+					$data["games"][] = $result->as_array();
+				}
+
+				showResponse("success", $data);
+
+			}catch(Exception $e){
+				showResponse("error", array(), $e->getMessage());
+			}
+		}
 	}
 	
+	function addGame(){
+		$gameData = getRequestBody();
+
+		if($gameData == null || count($gameData) == 0){
+			showResponse("fail", array(), "No data received");
+		}else{
+
+			$game = Model::factory('GameEntity')->create();
+
+			try{
+
+				foreach ($gameData as $prop => $value) {
+					if($prop == "id"){
+						continue;
+					}
+					$game->$prop = $value;
+				}
+
+				$response = $game->save();
+
+				$data = array();
+				if($response == 1){
+					$data["games"][] = $game->as_array();
+					showResponse("success", $data);
+				}else{
+					showResponse("error", $data, "Could not save game: " . $response);
+				}
+
+			}catch(Exception $e){
+				showResponse("error", array(), $e->getMessage());
+			}
+		}
+
+	}
+
+	function deleteGame($id){
+
+		$ids = json_decode($id);
+
+		if($ids == null){
+			showResponse("fail", array(), "No IDs received");
+		}else{
+
+			if(!is_array($ids)){
+				$ids = array($ids);
+			}
+
+			$result_array = array();
+
+			try{
+				$games = Model::factory('GameEntity')->where_in('id', $ids)->find_many($ids);
+
+				foreach( $games as $game ){
+
+					$game_id = $game->id;
+					$response = $game->delete();
+					$result_array["games"][$game_id] = $response;
+
+				}
+
+				showResponse("success", $result_array);
+
+			}catch(Exception $e){
+				$hadErrorsFlag = true;
+				showResponse("error", $result_array, $e->getMessage());
+			}
+		}
+	}
+	
+	function updateGame(){
+
+		$gameData = getRequestBody();
+
+		if($gameData == null || count($gameData) == 0){
+			showResponse("fail", array(), "No data received");
+		}else{
+
+			//Get an array of the IDs of the games we want to update
+			$ids = array_map(function($game){
+				return $game["id"];
+			}, $gameData);
+
+			//Init some arrays
+			$result_array = array();
+			$indexedGames = array();
+
+			try{
+				//Retrieve an array of game objects from the DB
+				$games = Model::factory('GameEntity')->where_in('id', $ids)->find_many($ids);
+
+				//Create arrays of DB and frontend response data indexed by game ID
+				foreach( $games as $game ){
+					$indexedGames[$game->id] = $game;
+					$result_array["games"][$game->id] = 0;
+				}
+
+				//For each game present in the update array
+				foreach ($gameData as $id => $data) {
+
+					//Retrieve the appropriate game object
+					$game = $indexedGames[$data["id"]];
+					
+					//For each property in the game update array
+					foreach ($data as $prop => $value) {
+						
+						if($prop == "id" || $prop == "selected"){
+							continue;
+						}
+						$game->$prop = $value;
+					}
+
+					$game->save();
+					$result_array["games"][$game->id] = $game->as_array();
+				}
+
+				showResponse("success", $result_array);
+
+			}catch(Exception $e){
+				$hadErrorsFlag = true;
+				showResponse("error", $result_array, $e->getMessage());
+			}
+		}
+
+	}
+
+	function showResponse($status, $data, $message = null, $code = null){
+		
+		$output=array(
+			"status" 	=> $status,
+			"data"		=> $data,
+		);
+		if($message){
+			$output["message"] = $message;
+		}
+		if($code){
+			$output["code"] = $code;
+		}
+		echo json_encode($output);
+	}
+	
+	function getRequestBody(){
+		$request = \Slim\Slim::getInstance()->request();
+		$body = $request->getBody();
+		$gameData = json_decode($body, true);
+		
+		return $gameData;
+	}
+
+	//Deprecated in favor of implementing the search on the frontend
+	/*
 	function findGame($query){
 		$terms=urldecode($query);
 		$terms=parse_term($terms);
@@ -59,186 +242,6 @@
 		$results = $games->find_many();
 		
 		showResults($results);
-	}
-	
-	function addGame(){
-		$gameData = getData();
-		
-		$game = Model::factory('GameEntity')->create();
-		
-		foreach ($gameData as $prop => $value) {
-			if($prop == "id"){
-				continue;
-			}
-			$game->$prop = $value;
-		}
-		
-		try {
-			$response = $game->save();
-		}catch( Exception $e){
-			$response = $e->getMessage();
-		}
-		
-		if( $response == 1 ){
-			showSuccess("Created successfully",$game);
-		}else{
-			showError("Object could not be created");
-		}
-	}
-	
-	function updateGame($id){
-
-		$gameData = getData();
-
-		$ids = json_decode(($id));
-
-		if(!is_array($ids)){
-			$ids = array($ids);
-		}
-
-		$result_array = array();
-		$hadErrorsFlag = false;
-		
-		try {
-			$games = Model::factory('GameEntity')->where_in('id', $ids)->find_many($ids);
-		}catch( Exception $e){
-			$hadErrorsFlag = true;
-		}
-
-		if(!$hadErrorsFlag){
-			foreach( $games as $game ){
-
-				foreach ($gameData as $prop => $value) {
-					if($prop == "id" || $prop == "selected"){
-						continue;
-					}
-					$game->$prop = $value;
-				}
-				
-				try{
-					$game->save();
-					$response = $game->as_array();
-				}catch( Exception $e){
-					$hadErrorsFlag = true;
-					$response = $e->getMessage();
-				}
-
-				$result_array[$game->id] = $response;
-			}
-
-			if( !$hadErrorsFlag ){
-				showSuccess("All objects updated successfully",$result_array);
-			}else{
-				showError("Some objects could not be updated",$result_array);
-			}
-		}else{
-			showError($e->getMessage());
-		}
-		
-	}
-	
-	function deleteGame($id){
-	
-		$ids = json_decode($id);
-
-		if($ids == null){
-			showError("No IDs received");
-			return;
-		}
-
-		if(!is_array($ids)){
-			$ids = array($ids);
-		}
-
-		$result_array = array();
-		$hadErrorsFlag = false;
-		
-		try {
-			$games = Model::factory('GameEntity')->where_in('id', $ids)->find_many($ids);
-		}catch( Exception $e){
-			$hadErrorsFlag = true;
-		}
-
-		if(!$hadErrorsFlag){
-			foreach( $games as $game ){
-			
-				$game_id = $game->id;
-				
-				try{
-					$response = $game->delete();
-				}catch( Exception $e){
-					$hadErrorsFlag = true;
-					$response = $e->getMessage();
-				}
-
-				$result_array[$game_id] = $response;
-			}
-
-			if( !$hadErrorsFlag ){
-				showSuccess("All objects deleted successfully",$result_array);
-			}else{
-				showError("Some objects could not be deleted",$result_array);
-			}
-		}else{
-			showError($e->getMessage());
-		}
-	}
-	
-	function showResults($results){
-			
-		if($results){
-			$resultsArray = array();
-			foreach($results as $idx => $result){
-				$resultsArray[] = $result->as_array();
-			}
-			
-			$output=array(
-				"count"=>count($results),
-				"success"=>"1",
-				"results"=>$resultsArray
-			);
-			
-			echo json_encode($output);
-		}else{
-			showError("No results returned");
-		}
-		
-	}
-	
-	function showError($msg, $detailArray=null){
-		$output=array(
-			"error"=>"1",
-			"success"=>"0",
-			"msg"=>$msg
-		);
-		if($detailArray){
-			$output["detailArray"]=$detailArray;
-		}
-		echo json_encode($output);
-	}
-	
-	function showSuccess($msg, $object=null){
-		$output=array(
-			"error"=>"0",
-			"success"=>"1",
-			"msg"=>$msg
-		);
-		if($object){
-			if(!is_array($object)){
-				$output["successObject"]=$object->as_array();
-			}else{
-				$output["successObject"]=$object;
-			}
-		}
-		echo json_encode($output);
-	}
-	
-	function getData(){
-		$request = \Slim\Slim::getInstance()->request();
-		$body = $request->getBody();
-		$gameData = json_decode($body, true);
-		
-		return $gameData;
 	}
 	
 	function parse_term($term){
@@ -260,4 +263,5 @@
 		
 		return $return;
 	}
+	*/
 ?>

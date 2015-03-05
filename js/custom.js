@@ -132,21 +132,21 @@ var gameViewModel = undefined;
 					url: 'api.php/games/',
 					success: function(response){
 
-						//Attach some extra properties
-						self.overviewDataStore(response.results);
-						$.each(response.results, function(idx, elem){
-							elem.selected = false;
-							elem = ko.mapping.fromJS(elem);
-							response.results[idx] = elem;
-							//elem.selected = false;
-						});
-						self.overviewDataStore(response.results);
+						if(self.responseSuccess(response)){
 
-						/*self.overviewDataStore($.map(response.results, function(game){
-							return ko.observable(game);
-						}));*/
+							$.each(response.data.games, function(idx, elem){
+								elem.selected = false;
+								elem = ko.mapping.fromJS(elem);
+								response.data.games[idx] = elem;
+							});
+							self.overviewDataStore(response.data.games);
 
-						self.overviewDataStore(response.results);
+						}else{
+							self.mostRecentAjaxFailure("Could not retrieve overviewDataStore: " + self.getResponseErrorMsg(response));
+						}
+					},
+					complete: function(jqXHR, textStatus){
+						self.activeRequests( self.activeRequests() - 1 );
 						self.showLoading(0);
 					}
 				});
@@ -161,12 +161,23 @@ var gameViewModel = undefined;
 				dataType: "json",
 				data: JSON.stringify(self.newGame()),
 				success: function(response, textStatus, jqXHR){
-					self.addGameToLocalObjects(response.successObject);
-					self.applySortingToDataStore();
-					self.hideModal();
-					console.log(response);
-					self.mostRecentAjaxSuccess(response.msg);
-					self.newGame(self.createNewEmptyGame())
+
+					if(self.responseSuccess(response)){
+
+						var elem = response.data.games[0];
+						elem.selected = false;
+						var game = ko.mapping.fromJS(elem);
+
+						self.addGameToLocalObjects(game);
+						self.applySortingToDataStore();
+						self.hideModal();
+						self.mostRecentAjaxSuccess("Game " + elem.id + " created successfully");
+						self.newGame(self.createNewEmptyGame());
+
+					}else{
+						self.mostRecentAjaxFailure("Could not create game: " + self.getResponseErrorMsg(response));
+					}
+
 				},
 				error: self.standardOnFailureHandler
 			});
@@ -183,7 +194,7 @@ var gameViewModel = undefined;
 				console.log("Could not parse game obj/array");
 				return;
 			}
-			
+
 			self.ajax({
 				type: 'DELETE',
 				contentType: 'application/json',
@@ -192,6 +203,8 @@ var gameViewModel = undefined;
 				success: function(response, textStatus, jqXHR){
 					if(typeof onSuccess === 'function'){
 						onSuccess(response, textStatus, jqXHR);
+					}else{
+						console.log(response);
 					}
 				},
 				error: function(jqXHR, textStatus, errorThrown){
@@ -207,20 +220,39 @@ var gameViewModel = undefined;
 		this.massDelete = function(viewModel, event){
 			
 			var ids = $.map(self.selectedGames(),function(game){
-				return game.id;
+				return game.id();
 			});
 
 			self.deleteGame(ids, function(response, textStatus, jqXHR){
 
-				if(response.success == 1){
+				if(self.responseSuccess(response)){
 
-					self.mostRecentAjaxSuccess(response.msg);
 					self.removeGameFromLocalObjects(self.selectedGames());
-					//self.debugLogDataStore();
+					self.mostRecentAjaxSuccess("Games deleted successfully");
 
 				}else{
+
 					console.log(response);
-					self.mostRecentAjaxFailure(response.msg);
+
+					if(self.responseError(response)){
+
+						var gamesToDelete = Array();
+						$.each(response.data.games, function(idx, result){
+
+							if(result == 1){
+								var game = self.getGameById(idx);
+								gamesToDelete.push(game);
+							}
+
+						});
+
+						self.removeGameFromLocalObjects(gamesToDelete);
+						self.mostRecentAjaxFailure("Some games could not be deleted: " + self.getResponseErrorMsg(response));
+
+					}else{
+						self.mostRecentAjaxFailure(self.getResponseErrorMsg(response));
+					}
+					
 				}
 
 			});
@@ -228,32 +260,54 @@ var gameViewModel = undefined;
 
 		this.updateGame = function(game){
 
+			var postData;
+			if($.isArray(game)){
+				postData = JSON.stringify(game);
+			}else if (typeof game === 'object'){
+				postData = JSON.stringify(Array(ko.mapping.toJS(game)));
+			}else{
+				console.log("Could not parse game obj/array");
+				return;
+			}
+
 			self.ajax({
 				type: 'PUT',
 				contentType: 'application/json',
-				url: 'api.php/games/' + game.id(),
+				url: 'api.php/games/',
 				dataType: "json",
-				data: JSON.stringify(ko.mapping.toJS(game)),
+				data: postData,
 				success: function(response, textStatus, jqXHR){
-					if(response.success == 1){
-						$.each(response.successObject, function(idx, elem){
 
-							var newGameDataObj = elem;
-							console.log(newGameDataObj);
-							$.each(newGameDataObj, function(idx, elem){
-								game[idx](elem);
-							});
+					if(response.data && response.data.games){
+						
+						$.each(response.data.games, function(idx, val){
+
+							if(val !== false){
+								var gameToUpdate = self.getGameById(val.id);
+
+								if(gameToUpdate){
+
+									$.each(val, function(prop, value){
+										gameToUpdate[prop](value);
+									});
+
+								}else{
+									console.log("Couldn't locate game " + val.id + " to update");
+								}
+							}
 
 						});
+					}
+					
+					if(self.responseSuccess(response)){
 
 						self.hideModal();
-						console.log(response);
-						self.mostRecentAjaxSuccess(response.msg);
+						self.mostRecentAjaxSuccess("All games updated successfully");
 						self.applySortingToDataStore();
 
 					}else{
 						console.log(response);
-						self.mostRecentAjaxFailure(response.msg);
+						self.mostRecentAjaxFailure(self.getResponseErrorMsg(response));
 					}
 
 				},
@@ -262,28 +316,20 @@ var gameViewModel = undefined;
 		}
 		
 		this.massUpdate = function(viewModel, event){
-			var ids = $.map(self.selectedGames(),function(game){
-				return game.id;
-			});
-			self.ajax({
-				type: 'PUT',
-				contentType: 'application/json',
-				url: 'api.php/games/' + JSON.stringify(ids),
-				dataType: "json",
-				data: JSON.stringify(self.massUpdateData()),
-				success: function(response, textStatus, jqXHR){
-					$.each(response.successObject, function(idx, elem){
-						self.removeGameFromLocalObjects(elem);
-						self.addGameToLocalObjects(elem);
-					});
 
-					self.applySortingToDataStore();
-					self.hideModal();
-					console.log(response);
-					self.mostRecentAjaxSuccess(response.msg);
-				},
-				error: self.standardOnFailureHandler
+			var massUpdateData = Array();
+
+			$.each(self.selectedGames(), function(idx, elem){
+				var game = ko.mapping.toJS(elem);
+				
+				$.each(self.massUpdateData(), function(prop, value){
+					game[prop] = value;
+				});
+
+				massUpdateData.push(game);
 			});
+
+			self.updateGame(massUpdateData);
 		}
 		
 		$('.search').autocomplete({
@@ -349,16 +395,15 @@ var gameViewModel = undefined;
 
 			self.deleteGame(game, function(response, textStatus, jqXHR){
 
-				if(response.success){
+				if(self.responseSuccess(response)){
 
 					self.hideModal();
-					self.mostRecentAjaxSuccess(response.msg);
 					self.removeGameFromLocalObjects(game);
-					//self.debugLogDataStore();
+					self.mostRecentAjaxSuccess("Game deleted successfully");
 
 				}else{
 					console.log(response);
-					self.mostRecentAjaxFailure(response.msg);
+					self.mostRecentAjaxFailure(self.getResponseErrorMsg(response));
 				}
 
 			});
@@ -366,18 +411,33 @@ var gameViewModel = undefined;
 
 		this.deleteGameFromList = function(game, event){
 			self.deleteGame(game, function(response, textStatus, jqXHR){
-				self.mostRecentAjaxSuccess(response.msg);
-				self.removeGameFromLocalObjects(game);
-				self.applySortingToDataStore();
+
+				if(self.responseSuccess(response)){
+
+					self.removeGameFromLocalObjects(game);
+					self.mostRecentAjaxSuccess("Game deleted successfully");
+
+				}else{
+					console.log(response);
+					self.mostRecentAjaxFailure(self.getResponseErrorMsg(response));
+				}
+
 			});
 		}
 
+		this.cancelCreateGame = function(game, event){
+			self.newGame(self.createNewEmptyGame());
+			self.hideModal();
+		}
+
+		this.cancelMassUpdate = function(game, event){
+			self.hideModal();
+		}
+
 		this.showHome = function(){
-
-				self.showLoading(1);
-				//self.gameList(undefined);
-				self.showLoading(0);
-
+			self.showLoading(1);
+			//self.gameList(undefined);
+			self.showLoading(0);
 		}
 
 		this.showAll = function(){
@@ -407,7 +467,7 @@ var gameViewModel = undefined;
 				dataType: 'json',
 				url: 'api.php/games/' + game.id(),
 				success: function(response, textStatus, jqXHR){
-					if( response.results && response.results[0] ){
+					if( response.data.games && response.data.games[0] ){
 
 
 						
@@ -416,7 +476,7 @@ var gameViewModel = undefined;
 							currentGame[idx] = elem;
 						});*/
 
-						ko.mapping.fromJS(response.results[0], game);
+						ko.mapping.fromJS(response.data.games[0], game);
 
 						self.currentGame(game);
 						self.showModal("editgame");
@@ -804,7 +864,7 @@ var gameViewModel = undefined;
 		}
 
 		this.ajax = function(ajaxOpts){
-			ajaxOpts.complete = function(jqXHR, textStatus){
+			ajaxOpts.complete = ajaxOpts.complete || function(jqXHR, textStatus){
 				self.activeRequests( self.activeRequests() - 1 );
 			}
 			self.activeRequests( self.activeRequests() + 1 );
@@ -829,6 +889,14 @@ var gameViewModel = undefined;
 			};
 		}
 
+		this.getGameById = function(id){
+			var results = $.grep(self.overviewDataStore(),function(elem, idx){
+				return (elem.id() === id);
+			});
+			//Should only be one anyway, but just to be sure...
+			return results[0];
+		}
+
 		this.debugLogDataStore = function(idx_start, idx_end){
 			if(idx_start === undefined && idx_end === undefined){
 				idx_start = 0;
@@ -844,12 +912,24 @@ var gameViewModel = undefined;
 			console.log(outputReadyList);
 		}
 
-		this.getGameById = function(id){
-			var results = $.grep(self.overviewDataStore(),function(elem, idx){
-				return (elem.id() === id);
-			});
-			//Should only be one anyway, but just to be sure...
-			return results[0];
+		this.responseSuccess = function(response){
+			return self.getResponseStatus(response) == "success";
+		}
+
+		this.responseFail = function(response){
+			return self.getResponseStatus(response) == "fail";
+		}
+
+		this.responseError = function(response){
+			return self.getResponseStatus(response) == "error";
+		}
+
+		this.getResponseStatus = function(response){
+			return response.status;
+		}
+
+		this.getResponseErrorMsg = function(response){
+			return response.message;
 		}
 
 		ko.bindingHandlers.showSuccess = {

@@ -37,8 +37,11 @@
 		- Make pagination control width/spacing static so page # doesn't vary spacing
 		- Within ajax success callback, actually check for response.success
 		- Display error/success message even if it's the same as the last error/success message
-
-		- BUG: Adding game from the homepage displays "Show All page"
+		- Implement frontend messaging system (a la Magento's messaging system?)
+		- Clean up tab display logic
+		- Create class for Response objects
+		- Condense deleteGameFromModal + deleteGameFromtList, as they are 90% the same code
+		- Figure out how to handle mass updates of "set x properties to y, ignore z properties" VS. "clear values of x properties"
 	-->
 	<body>
 		<div class="navbar navbar-inverse navbar-fixed-top" role="navigation">
@@ -83,7 +86,7 @@
 					</form>
 				</div>
 				<div class="modal-footer">
-					<button type="button" class="btn btn-default" data-bind="click: hideModal">Cancel</button>
+					<button type="button" class="btn btn-default" data-bind="click: cancelMassUpdate">Cancel</button>
 					<button type="button" class="btn btn-primary" data-bind="click: massUpdate, text: 'Update ' + selectedGames().length + ' game(s)'"></button>
 				</div>
 		    </div>
@@ -115,7 +118,7 @@
 					</form>
 		      </div>
 		      <div class="modal-footer">
-		        <button type="button" class="btn btn-default" data-bind="click: $root.hideModal">Cancel</button>
+		        <button type="button" class="btn btn-default" data-bind="click: $root.cancelCreateGame">Cancel</button>
 		        <button type="button" class="btn btn-primary" data-bind="click: $root.createGame">Create Game</button>
 		      </div>
 		    </div>
