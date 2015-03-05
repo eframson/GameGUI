@@ -187,6 +187,9 @@
 						if($prop == "id" || $prop == "selected"){
 							continue;
 						}
+						if($value == "<DELETE>"){
+							$value = null;
+						}
 						$game->$prop = $value;
 					}
 

@@ -6,6 +6,10 @@ button:focus {
 	outline: 0 !important;
 }
 
+.clear {
+	clear: both;
+}
+
 .modal-content {
 	display: none;
 }
@@ -68,6 +72,11 @@ button:focus {
 .all-games .table-meta div.pagination-controls .page-label {
 	font-size: 14px;
 	vertical-align: top;
+}
+
+.all-games .table-meta div.pagination-controls .page-label.page-counter {
+	width: 80px;
+	display: inline-block;
 }
 
 .all-games .table-meta div.pagination-controls .page-control {
@@ -135,11 +144,18 @@ button:focus {
     background: #555;
 }
 
-.clear {
-	clear: both;
+.massupdate .modal-body h4 {
+	display: inline-block;
+	margin: 0 48px 0 0;
+	width: 400px;
+	float: right;
 }
 
-.form-group:not(:last){
+.massupdate .form-group:last-child{
+	margin-bottom: 0px;
+}
+
+.form-group:not(:last-child){
 	margin-bottom: 20px;
 }
 

@@ -34,15 +34,9 @@
 		- Put in some content in "home" so one tab's content can be easily distinguished from another
 		- Make Cmd/Ctrl + F a shortcut for search rather than default Chrome/FF functionality
 		- Add "X" icon to filter box so results can be easily cleared
-		- Make pagination control width/spacing static so page # doesn't vary spacing
-		- Within ajax success callback, actually check for response.success
 		- Display error/success message even if it's the same as the last error/success message
 		- Implement frontend messaging system (a la Magento's messaging system?)
 		- Clean up tab display logic
-		- Create class for Response objects
-		- Condense deleteGameFromModal + deleteGameFromtList, as they are 90% the same code
-		- Figure out how to handle mass updates of "set x properties to y, ignore z properties" VS. "clear values of x properties"
-		- BUG: filter + mass update
 		- Re-sort list on partial update
 	-->
 	<body>
@@ -83,6 +77,10 @@
 						<div class="form-group">
 							<label for="platform">Platform</label>
 							<input type="text" class="form-control" id="edit_platform" placeholder="Platform" data-bind="value: platform">
+							<div class="clear"></div>
+						</div>
+						<div class="form-group">
+							<h4><small>Input <strong>&lt;DELETE&gt;</strong> to set value to NULL, otherwise field is ignored</small></h4>
 							<div class="clear"></div>
 						</div>
 					</form>
@@ -157,7 +155,7 @@
 					</form>
 				</div>
 				<div class="modal-footer">
-					<button type="button" class="btn btn-danger" data-bind="click: $root.deleteGameFromModal">Delete</button>
+					<button type="button" class="btn btn-danger" data-bind="click: $root.deleteGame">Delete</button>
 			        <button type="button" class="btn btn-default" data-bind="click: $root.cancelUpdateGame">Cancel</button>
 			        <button type="button" class="btn btn-primary" data-bind="click: $root.updateGame">Update</button>
 		      </div>
@@ -191,7 +189,7 @@
 			<div class="all-games hidden" data-bind="visible: activeTab() == 'all', css: { hidden: false }">
 				<div class="row table-meta">
 					<div class="col-md-3 pagination-controls">
-						<span class="page-label" data-bind="text: 'Page: ' + currentPageNo() + '/' + currentGameListTotalPages()"></span>
+						<span class="page-label page-counter" data-bind="text: 'Page: ' + currentPageNo() + '/' + currentGameListTotalPages()"></span>
 						<button data-bind="click: prevGameListPage" class="page-control glyphicon glyphicon-triangle-left"></button>
 						<span class="page-label" data-bind="text: '(' + pageSize() + ' per page)'"></span>
 						<button data-bind="click: nextGameListPage" class="page-control glyphicon glyphicon-triangle-right"></button>
@@ -223,7 +221,7 @@
 				<!-- ko foreach: currentPage -->
 				<div class="row single-game">
 					<div class="col-md-1">
-						<span data-bind="click: $root.deleteGameFromList" class="delete-ctrl glyphicon glyphicon-trash"></span>
+						<span data-bind="click: $root.deleteGame" class="delete-ctrl glyphicon glyphicon-trash"></span>
 						<span data-bind="click: $root.editGameFromList" class="edit-ctrl glyphicon glyphicon-pencil"></span>
 					</div>
 					<div class="col-md-1" data-bind="text: id"></div>
