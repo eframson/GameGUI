@@ -9,7 +9,7 @@ var Games = function() {
 
 		self.currentGame = ko.observable();
 		self.newGame = ko.observable(self.createNewEmptyGame());
-		self.searchTerm = ko.observable();
+		self.searchTerm = ko.observable(undefined);
 		self.activeTab = ko.observable("");
 		self.gameList = ko.observableArray();
 		self.overviewDataStore = ko.observableArray();
@@ -28,6 +28,12 @@ var Games = function() {
 		self.activeRequests = ko.observable(0);
 		self.listMode = ko.observable("all");
 		self.filteredList = ko.observableArray();
+		//self.filterAndTerm = " && ";
+		//self.filterOrTerm = " || ";
+		//self.filterFieldSplitTerm = "|";
+		self.filterAndTerm = " AND ";
+		self.filterOrTerm = " OR ";
+		self.filterFieldSplitTerm = "=";
 
 		self.currentGameCancelData = Array();
 		self.modalIsShown = false;
@@ -37,7 +43,7 @@ var Games = function() {
 				var appropriateDataStore = ko.unwrap(self.getAppropriateDataStore());
 				var page_no = self.currentPageNo();
 				end_no = self.pageSize() * page_no;
-				end_no = (end_no < appropriateDataStore.length) ? end_no : appropriateDataStore.length - 1;
+				end_no = (end_no < appropriateDataStore.length) ? end_no : appropriateDataStore.length;
 				start_no = end_no - self.pageSize();
 				start_no = (start_no < 1) ? 0 : start_no ;
 				return appropriateDataStore.slice(start_no, end_no);
@@ -358,7 +364,7 @@ var Games = function() {
 				}
 			);*/
 
-			response($.map(self.getFilteredDataStore("title|" + request.term + " || source|" + request.term), function( game ){
+			response($.map(self.getFilteredDataStore("title" + self.filterFieldSplitTerm + request.term + self.filterOrTerm + "source" + self.filterFieldSplitTerm + request.term), function( game ){
 				return {
 					label: game.title() + " (" + game.source() + ")",
 					value: game.id()
@@ -370,7 +376,6 @@ var Games = function() {
 			if(ui.item.value != "#"){
 				$('.search').val(ui.item.label);
 				var game = self.getGameById(ui.item.value);
-				self.searchTerm(false);
 				self.editGameFromList(game);
 			}
 		},
@@ -396,6 +401,23 @@ var Games = function() {
 			}
 		}
 	});
+	
+	$('.search').click(function(event){
+		console.log("clicked");
+		var $this=$(this);
+		event.preventDefault();
+		if( self.searchTerm() ){
+			console.log("display the shit");
+			$this.parents(".navbar-nav").siblings("#container").children(".ui-autocomplete:hidden").show();
+		}else{
+			//$this.autocomplete("search");
+		}
+	});
+	
+	this.clearSearch = function(viewModel, event){
+		self.searchTerm(undefined);
+		$('.search').val(undefined);
+	}
 
 	this.cancelCreateGame = function(game, event){
 		self.newGame(self.createNewEmptyGame());
@@ -456,6 +478,15 @@ var Games = function() {
 	this.cancelUpdateGame = function(game, event){
 		ko.mapping.fromJS(self.currentGameCancelData, game);
 		self.hideModal();
+	}
+	
+	this.updateGameOnEnter = function(game, event){
+		
+		var $elem = $(event.target);
+
+		if( event.keyCode == 13 ){ //enter
+			self.updateGame(game);
+		}
 	}
 
 	this.triggerModal = function(viewModel, event){
@@ -541,13 +572,15 @@ var Games = function() {
 		var andTerms = Array();
 		var orTerms = Array();
 
-		if(termString.match(/ && /) || termString.match(/ \|\| /)){
+		//filterAndTerm
+		//filterOrTerm
+		if(termString.match(self.filterAndTerm) || termString.match(self.filterOrTerm)){
 
-			var andArray = termString.split(" && ");
+			var andArray = termString.split(self.filterAndTerm);
 
 			for(i = 0; i < andArray.length; i++){
 				
-				var orArray = andArray[i].split(" || ");
+				var orArray = andArray[i].split(self.filterOrTerm);
 
 				if( andArray.length > 1 && orArray.length > 1){
 
@@ -577,7 +610,7 @@ var Games = function() {
 		}
 
 		for( i = 0; i < andTerms.length; i++ ){
-			var filterParts = andTerms[i].split("|");
+			var filterParts = andTerms[i].split(self.filterFieldSplitTerm);
 			var termObj = {};
 
 			if(filterParts.length == 2){
@@ -592,7 +625,7 @@ var Games = function() {
 		}
 		
 		for( i = 0; i < orTerms.length; i++ ){
-			var filterParts = orTerms[i].split("|");
+			var filterParts = orTerms[i].split(self.filterFieldSplitTerm);
 			var termObj = {};
 
 			if(filterParts.length == 2){
@@ -608,21 +641,6 @@ var Games = function() {
 		console.log(termObjects);
 		return termObjects;
 
-	}
-
-	this.applyFiltering = function(viewModel, event){
-		var $elem = $(event.target);
-
-		if( event.keyCode == 13 ){
-			var val = $elem.val();
-			if(val && val != ""){
-				self.filteredList(self.getFilteredDataStore(val));
-				self.listMode("filter");
-			}else{
-				self.filteredList(Array());
-				self.listMode("all");
-			}
-		}
 	}
 
 	this.getFilteredDataStore = function(filterString){
@@ -719,11 +737,36 @@ var Games = function() {
 				}
 		    });
 
+			console.log(matches);
 		    return matches;
 
 		}else{
 			return Array();
 		}
+	}
+	
+	this.applyFiltering = function(viewModel, event){
+		var $elem = $(event.target);
+
+		if( event.keyCode == 13 ){
+			var val = $elem.val();
+			if(val && val != ""){
+				self.filteredList(self.getFilteredDataStore(val));
+				console.log(self.filteredList().length);
+				self.listMode("filter");
+			}else{
+				self.filteredList(Array());
+				self.listMode("all");
+			}
+		}
+	}
+	
+	this.clearFilter = function(viewModel, event){
+		var $elem = $(event.target);
+	
+		$elem.parents("a").siblings("input").val(undefined);
+		self.filteredList(Array());
+		self.listMode("all");
 	}
 
 	this.updateSortingField = function(viewModel, event){

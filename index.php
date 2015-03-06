@@ -33,7 +33,6 @@
 	<!-- @TODOs
 		- Put in some content in "home" so one tab's content can be easily distinguished from another
 		- Make Cmd/Ctrl + F a shortcut for search rather than default Chrome/FF functionality
-		- Add "X" icon to filter box so results can be easily cleared
 		- Display error/success message even if it's the same as the last error/success message
 		- Implement frontend messaging system (a la Magento's messaging system?)
 		- Clean up tab display logic
@@ -48,7 +47,7 @@
 				<li data-bind="css: { active: activeTab() == 'all' }" ><a href="#all" data-bind="click: setActiveTab">Show All</a></li>
 			  </ul>
 			  <ul class="nav navbar-nav right">
-				<li class="pull-right"><input autocomplete="off" placeholder="Search" title="Search" class="form-control search" type="text"></li>
+				<li class="pull-right search-container"><input autocomplete="off" placeholder="Search" title="Search" class="form-control search" type="text"><a class="clear-icon" href="#" data-bind="click: clearSearch"><span class="glyphicon glyphicon-remove-sign"></span></a></li>
 				<li class="new-game-button-container pull-right"><button type="button" data-target="newgame" data-bind="click: triggerModal" class="form-control btn btn-primary">New Game</button></li>
 			  </ul>
 			  <div id="container"></div>
@@ -139,17 +138,17 @@
 						</div>
 						<div class="form-group">
 							<label for="title">Title</label>
-							<input type="text" class="form-control" id="edit_title" placeholder="Title" data-bind="value: title">
+							<input type="text" class="form-control" id="edit_title" placeholder="Title" data-bind="value: title, event: { keyup: $root.updateGameOnEnter }">
 							<div class="clear"></div>
 						</div>
 						<div class="form-group">
 							<label for="source">Source</label>
-							<input type="text" class="form-control" id="edit_source" placeholder="Source" data-bind="value: source">
+							<input type="text" class="form-control" id="edit_source" placeholder="Source" data-bind="value: source, event: { keyup: $root.updateGameOnEnter }">
 							<div class="clear"></div>
 						</div>
 						<div class="form-group">
 							<label for="platform">Platform</label>
-							<input type="text" class="form-control" id="edit_platform" placeholder="Platform" data-bind="value: platform">
+							<input type="text" class="form-control" id="edit_platform" placeholder="Platform" data-bind="value: platform, event: { keyup: $root.updateGameOnEnter }">
 							<div class="clear"></div>
 						</div>
 					</form>
@@ -206,6 +205,7 @@
 					<div class="col-md-1"></div>
 					<div class="col-md-3 filter-container">
 						<input autocomplete="off" placeholder="Filter (hit Enter when done)" title="Filter" class="form-control filter" type="text" data-bind="event: { keyup: applyFiltering }">
+						<a class="clear-icon" href="#" data-bind="click: clearFilter"><span class="glyphicon glyphicon-remove-sign"></span></a>
 					</div>
 				</div>
 

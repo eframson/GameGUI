@@ -31,16 +31,33 @@ button:focus {
 .navbar-collapse .search {
 	margin-top: 8px;
 	width: 350px;
+	padding-right: 20px;
+}
+
+.navbar-collapse .search-container {
 	position: relative;
 }
 
-.navbar-collapse .search:before {
-	font-family: 'Glyphicons Halflings';
+.navbar-collapse .search-container a.clear-icon {
 	position:absolute;
+	top: 19px;
+	right: 5px;
+	color: #777;
+	padding: 0;
+}
+
+.navbar-collapse .search-container a.clear-icon:hover {
+	color: #BDBDBD;
+}
+
+.navbar-collapse .search-container a.clear-icon:active,
+.navbar-collapse .search-container a.clear-icon:focus {
+	color: #777;
+}
+
+.navbar-collapse .search-container a.clear-icon .glyphicon {
 	top:0;
-	right:-5px;
-	content: "\e083";
-	color: #FF0000;
+	font-size: 16px;
 }
 
 .navbar-collapse .new-game-button-container {
@@ -113,6 +130,33 @@ button:focus {
 
 .all-games .row.table-meta .filter-container {
 	padding-right: 0;
+	position: relative;
+}
+
+.all-games .row.table-meta .filter-container input {
+	padding-right: 24px;
+}
+
+.all-games .row.table-meta .filter-container a.clear-icon {
+	position:absolute;
+	top: 11px;
+	right: 6px;
+	color: #777;
+	padding: 0;
+}
+
+.all-games .row.table-meta .filter-container a.clear-icon:hover {
+	color: #BDBDBD;
+}
+
+.all-games .row.table-meta .filter-container a.clear-icon:active,
+.all-games .row.table-meta .filter-container a.clear-icon:focus {
+	color: #777;
+}
+
+.all-games .row.table-meta .filter-container a.clear-icon .glyphicon {
+	top:0;
+	font-size: 16px;
 }
 
 .all-games .row.single-game {
