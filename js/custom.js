@@ -769,6 +769,12 @@ var Games = function() {
 		self.listMode("all");
 	}
 
+	this.preventFocus = function(viewModel, event){
+		event.preventDefault();
+		var $elem = $(event.target);
+		$elem.blur();
+	}
+
 	this.updateSortingField = function(viewModel, event){
 		var $elem = $(event.target);
 

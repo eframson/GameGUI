@@ -47,7 +47,7 @@
 				<li data-bind="css: { active: activeTab() == 'all' }" ><a href="#all" data-bind="click: setActiveTab">Show All</a></li>
 			  </ul>
 			  <ul class="nav navbar-nav right">
-				<li class="pull-right search-container"><input autocomplete="off" placeholder="Search" title="Search" class="form-control search" type="text"><a class="clear-icon" href="#" data-bind="click: clearSearch"><span class="glyphicon glyphicon-remove-sign"></span></a></li>
+				<li class="pull-right search-container"><input autocomplete="off" placeholder="Search" title="Search" class="form-control search" type="text"><a class="clear-icon" href="#" data-bind="event: {focus: preventFocus}, click: clearSearch"><span class="glyphicon glyphicon-remove"></span></a></li>
 				<li class="new-game-button-container pull-right"><button type="button" data-target="newgame" data-bind="click: triggerModal" class="form-control btn btn-primary">New Game</button></li>
 			  </ul>
 			  <div id="container"></div>
@@ -205,7 +205,7 @@
 					<div class="col-md-1"></div>
 					<div class="col-md-3 filter-container">
 						<input autocomplete="off" placeholder="Filter (hit Enter when done)" title="Filter" class="form-control filter" type="text" data-bind="event: { keyup: applyFiltering }">
-						<a class="clear-icon" href="#" data-bind="click: clearFilter"><span class="glyphicon glyphicon-remove-sign"></span></a>
+						<a class="clear-icon" href="#" data-bind="event: {focus: preventFocus}, click: clearFilter"><span class="glyphicon glyphicon-remove"></span></a>
 					</div>
 				</div>
 

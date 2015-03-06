@@ -40,10 +40,11 @@ button:focus {
 
 .navbar-collapse .search-container a.clear-icon {
 	position:absolute;
-	top: 19px;
+	top: 18px;
 	right: 5px;
 	color: #777;
 	padding: 0;
+	text-shadow: none;
 }
 
 .navbar-collapse .search-container a.clear-icon:hover {
