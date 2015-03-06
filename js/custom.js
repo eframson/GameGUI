@@ -14,8 +14,6 @@ var Games = function() {
 		self.gameList = ko.observableArray();
 		self.overviewDataStore = ko.observableArray();
 		self.showLoading = ko.observable(1);
-		self.mostRecentAjaxSuccess = ko.observable("");
-		self.mostRecentAjaxFailure = ko.observable("");
 		self.allSelected = ko.observable(0);
 		self.massUpdateData = ko.observable({
 			platform: undefined,
@@ -28,15 +26,14 @@ var Games = function() {
 		self.activeRequests = ko.observable(0);
 		self.listMode = ko.observable("all");
 		self.filteredList = ko.observableArray();
-		//self.filterAndTerm = " && ";
-		//self.filterOrTerm = " || ";
-		//self.filterFieldSplitTerm = "|";
-		self.filterAndTerm = " AND ";
-		self.filterOrTerm = " OR ";
+		self.filterAndTerm = "AND";
+		self.filterOrTerm = "OR";
 		self.filterFieldSplitTerm = "=";
 
 		self.currentGameCancelData = Array();
 		self.modalIsShown = false;
+		self.activeMessageType = ko.observable("info");
+		self.activeMessage = ko.observable("");
 
 		self.currentPage = ko.computed(function(){
 			if(self.activeTab() == "all"){
@@ -102,14 +99,11 @@ var Games = function() {
 		}.bind(self));
 
 		self.activeTab.subscribe(function(activeTab){
-			self.resetVisibleUI();
-
 			if(activeTab=="home"){
 				self.showHome();
 			}else if (activeTab=="all"){
 				self.showAll();
 			}
-			
 		}.bind(self));
 
 		self.currentGameListTotalPages = ko.computed(function(){
@@ -117,6 +111,10 @@ var Games = function() {
 				pageNum = Math.floor(appropriateDataStore.length / self.pageSize());
 			return (pageNum > 0) ? pageNum : 1 ;
 		});
+
+		self.messageClass = ko.pureComputed(function(){
+			return "bg-" + self.activeMessageType();
+		}, self);
 	}
 
 
@@ -563,81 +561,51 @@ var Games = function() {
 	}
 
 	this.parseTermString = function(termString){
-		console.log(termString);
+
 		var termObjects = { and: Array(), or: Array() };
 		if(termString === undefined){
+			console.log("No term string received");
 			return false;
 		}
 
-		var andTerms = Array();
-		var orTerms = Array();
+		var fieldValuePairs = Array()
+			fieldValuePairs["and"] = Array(),
+			fieldValuePairs["or"] = Array(),
+			andOrRegex = new RegExp("(" + self.filterAndTerm + "|" + self.filterOrTerm + ")");
 
-		//filterAndTerm
-		//filterOrTerm
-		if(termString.match(self.filterAndTerm) || termString.match(self.filterOrTerm)){
+		var results = termString.split(andOrRegex);
 
-			var andArray = termString.split(self.filterAndTerm);
-
-			for(i = 0; i < andArray.length; i++){
-				
-				var orArray = andArray[i].split(self.filterOrTerm);
-
-				if( andArray.length > 1 && orArray.length > 1){
-
-					for(j = 0; j < orArray.length; j++){
-						if(j == 0 && i == 0){
-							orTerms.push(orArray[j]);
-						}else if( j == 0 ){
-							andTerms.push(orArray[j]);
-						}else{
-							orTerms.push(orArray[j]);
-						}
-					}
-
-				}else if( orArray.length > 1 ){
-					
-					for(j = 0; j < orArray.length; j++){
-						orTerms.push(orArray[j]);
-					}
-
+		//Sort the filter string into "and" and "or" parts
+		if(results.length > 0){
+			
+			//Make sure that the first term has/can have an "AND/OR" associated with it
+			if(results.length % 2 == 1){
+				if(results[0].match(andOrRegex) === null){
+					//If the first term isn't prefaced with "AND/OR", default it to whatever the next term's logic is
+					results.unshift(results[1]);
 				}else{
-					andTerms.push(andArray[i]);
+					//Display this as an actual error message when I get that all figured out...
+					console.log("Unable to parse search string");
+					return false;
 				}
 			}
+
+			//Sort each term into "and" and "or"
+			$.each(results, function(idx, value){
+				if(idx % 2 == 1){
+					var key = results[(idx-1)].toLowerCase();
+					fieldValuePairs[key].push(value.trim());
+				}
+			});
+
 		}else{
-			//This is arbitrary, if there's just one term it really could be in either array
-			orTerms.push(termString);
+			//This is arbitrary, if there's only one term it doesn't matter if it's an "and" or an "or"
+			fieldValuePairs["or"].push(termString);
 		}
 
-		for( i = 0; i < andTerms.length; i++ ){
-			var filterParts = andTerms[i].split(self.filterFieldSplitTerm);
-			var termObj = {};
+		termObjects.and = self._parseTermArrayIntoFieldValueComponents(fieldValuePairs["and"]);
+		termObjects.or = self._parseTermArrayIntoFieldValueComponents(fieldValuePairs["or"]);
 
-			if(filterParts.length == 2){
-				termObj.field = filterParts[0];
-				termObj.termString = filterParts[1];
-			}else if(filterParts.length == 1){
-				termObj.field = 'ALL';
-				termObj.termString = filterParts[0];
-			}
-
-			termObjects.and.push(termObj);
-		}
-		
-		for( i = 0; i < orTerms.length; i++ ){
-			var filterParts = orTerms[i].split(self.filterFieldSplitTerm);
-			var termObj = {};
-
-			if(filterParts.length == 2){
-				termObj.field = filterParts[0];
-				termObj.termString = filterParts[1];
-			}else if(filterParts.length == 1){
-				termObj.field = 'ALL';
-				termObj.termString = filterParts[0];
-			}
-
-			termObjects.or.push(termObj);
-		}
 		console.log(termObjects);
 		return termObjects;
 
@@ -656,19 +624,20 @@ var Games = function() {
 					var doesMatch = true;
 
 					for(i = 0; i < termObjects.and.length; i++){
-						var matchTerm = termObjects.and[i].termString;
+						var matchTerm = termObjects.and[i].value;
 						var matchField = termObjects.and[i].field;
 
-						if( matchField == 'ALL' ){
-							var loopMatch = true;
+						if( matchField == 'ANY' ){
+
+							var loopMatch = false;
 
 							for(prop in gameArray){
 					        	if(prop == "id" || prop == "selected"){
 					        		continue;
 					        	}
 
-					        	if( (gameArray[prop] || "").match( new RegExp(matchTerm, "i")) === null ){
-									loopMatch = false;
+					        	if( (gameArray[prop] || "").match( new RegExp(matchTerm, "i")) !== null ){
+									loopMatch = true;
 									break;
 								}
 					        }
@@ -700,10 +669,10 @@ var Games = function() {
 					var doesMatch = false;
 
 					for(i = 0; i < termObjects.or.length; i++){
-						var matchTerm = termObjects.or[i].termString;
+						var matchTerm = termObjects.or[i].value;
 						var matchField = termObjects.or[i].field;
 
-						if( matchField == 'ALL' ){
+						if( matchField == 'ANY' ){
 							var loopMatch = false;
 
 							for(prop in gameArray){
@@ -752,7 +721,6 @@ var Games = function() {
 			var val = $elem.val();
 			if(val && val != ""){
 				self.filteredList(self.getFilteredDataStore(val));
-				console.log(self.filteredList().length);
 				self.listMode("filter");
 			}else{
 				self.filteredList(Array());
@@ -840,10 +808,6 @@ var Games = function() {
 		});
 	}
 
-	this.resetVisibleUI = function(){
-		self.currentGame(undefined);
-	}
-
 	this.getAppropriateDataStore = function(){
 		if (self.listMode() == "all"){
 			return self.overviewDataStore;
@@ -888,6 +852,24 @@ var Games = function() {
 
 	}
 
+	this._parseTermArrayIntoFieldValueComponents = function(termArray){
+		var terms = Array();
+		$.each(termArray, function(idx, value){
+			var termParts = value.split(self.filterFieldSplitTerm),
+				fieldName = "",
+				fieldValue = "";
+			if(termParts.length==1){
+				fieldName = "ANY";
+				fieldValue = termParts[0];
+			}else{
+				fieldName = termParts[0];
+				fieldValue = termParts[1];
+			}
+			terms.push({field: fieldName, value: fieldValue});
+		});
+		return terms;
+	}
+
 	this.createNewEmptyGame = function(){
 		return {
 				title: "",
@@ -919,31 +901,39 @@ var Games = function() {
 		console.log(outputReadyList);
 	}
 
-	ko.bindingHandlers.showSuccess = {
+	this.mostRecentAjaxFailure = function(messageString){
+		self.displayMessage(messageString, "danger");
+	}
+
+	this.mostRecentAjaxSuccess = function(messageString){
+		self.displayMessage(messageString, "success");
+	}
+
+	this.displayMessage = function(messageString, type){
+		type = type || "info";
+
+		self.activeMessageType(type);
+		self.activeMessage(messageString);
+	}
+
+	ko.bindingHandlers.showMessage = {
 	    init: function(element, valueAccessor) {
-	        $(element).hide();
+	        //$(element).hide();
 	    },
 	    update: function(element, valueAccessor) {
 	        // On update, fade in/out
 	        var message = valueAccessor();
 	        if(message && message != ""){
-				$(element).text(message).slideDown(500).delay(3000).slideUp(500);	
+				$(element).text(message).slideDown(500).delay(3000).slideUp(500, function(){
+					self.activeMessage("");
+				});	
 	        }
-	    } 
+	    }
 	};
-	
-	ko.bindingHandlers.showError = {
-	    init: function(element, valueAccessor) {
-	        $(element).hide();
-	    },
-	    update: function(element, valueAccessor) {
-	        // On update, fade in/out
-	        var message = valueAccessor();
-	        if(message && message != ""){
-				$(element).text(message).slideDown(500).delay(6000).slideUp(500);	
-	        }
-	    } 
-	};
+
+	this.messageTest = function(){
+		self.mostRecentAjaxSuccess("A Test Message");
+	}
 };
 
 var Response = function(responseData){
@@ -989,8 +979,14 @@ $(document).ready(function(){
 	gameViewModel.initOverviewDataStore();
 
 	//Initialize correct tab based on hash
-	window.location.hash = "home";
+	window.location.hash = window.location.hash || "home";
 	var hash = window.location.hash;
 	gameViewModel.activeTab(hash.replace(/^#/, ''));
 	
+});
+
+$(window).on('hashchange', function(){
+	console.log("change");
+	var hash = window.location.hash;
+	gameViewModel.activeTab(hash.replace(/^#/, ''));
 });

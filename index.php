@@ -32,11 +32,14 @@
 	</head>
 	<!-- @TODOs
 		- Put in some content in "home" so one tab's content can be easily distinguished from another
-		- Make Cmd/Ctrl + F a shortcut for search rather than default Chrome/FF functionality
-		- Display error/success message even if it's the same as the last error/success message
-		- Implement frontend messaging system (a la Magento's messaging system?)
 		- Clean up tab display logic
-		- Re-sort list on partial update
+		- Re-sort list on partially successful update
+		- Dynamic syntax highlighting for filter queries
+		- Provide instructions for filter syntax somewhere
+		- Show a user-friendly string translation of the filter string
+		- Let users filter by NULL or empty values
+		- Make mass update and create game modals submit by default when enter key is pressed like update does currently
+		- Break out filtering logic into subfunction maybe?
 	-->
 	<body>
 		<div class="navbar navbar-inverse navbar-fixed-top" role="navigation">
@@ -65,8 +68,7 @@
 			        <h4 class="modal-title" id="myModalLabel">Mass Update</h4>
 			    </div>
 				<div class="modal-body">
-					<div class="ajax-notice bg-success" data-bind="showSuccess: $root.mostRecentAjaxSuccess()"></div>
-					<div class="ajax-notice bg-danger" data-bind="showError: $root.mostRecentAjaxFailure()"></div>
+					<div class="ajax-notice" data-bind="css: $root.messageClass, showMessage: $root.activeMessage()"></div>
 					<form role="form-horizontal" data-bind="with: massUpdateData">
 						<div class="form-group">
 							<label for="source">Source</label>
@@ -96,8 +98,7 @@
 		        <h4 class="modal-title" id="myModalLabel">Create New Game</h4>
 		      </div>
 		      <div class="modal-body">
-		      	<div class="ajax-notice bg-success" data-bind="showSuccess: $root.mostRecentAjaxSuccess()"></div>
-				<div class="ajax-notice bg-danger" data-bind="showError: $root.mostRecentAjaxFailure()"></div>
+				<div class="ajax-notice" data-bind="css: $root.messageClass, showMessage: $root.activeMessage()"></div>
 		        <form role="form-horizontal">
 						<div class="form-group">
 							<label for="title">Title</label>
@@ -128,8 +129,7 @@
 			        <h4 class="modal-title" id="myModalLabel">Edit Game</h4>
 		      	</div>
 		      	<div class="modal-body">
-		      		<div class="ajax-notice bg-success" data-bind="showSuccess: $root.mostRecentAjaxSuccess()"></div>
-					<div class="ajax-notice bg-danger" data-bind="showError: $root.mostRecentAjaxFailure()"></div>
+		      		<div class="ajax-notice" data-bind="css: $root.messageClass, showMessage: $root.activeMessage()"></div>
 					<form role="form-horizontal">
 						<div class="form-group">
 							<label for="id">Id</label>
@@ -167,8 +167,7 @@
 
 		  <div class="starter-template">
 
-			<div class="ajax-notice bg-success" data-bind="showSuccess: mostRecentAjaxSuccess()"></div>
-			<div class="ajax-notice bg-danger" data-bind="showError: mostRecentAjaxFailure()"></div>
+			<div class="ajax-notice" data-bind="css: messageClass, showMessage: activeMessage()"></div>
 
 			<div class="loading-indicator hidden" data-bind="visible: showLoading(), css: { hidden: false }" ><img src="img/ajax-loader.gif" /></div>
 

@@ -17,6 +17,7 @@ button:focus {
 .ajax-notice {
 	display: none;
 	margin-bottom: 10px;
+	text-align: center;
 }
 
 .starter-template {
