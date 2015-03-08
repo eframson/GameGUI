@@ -151,6 +151,7 @@
 	function updateGame(){
 
 		$gameData = getRequestBody();
+		//print_r($gameData);
 
 		if($gameData == null || count($gameData) == 0){
 			showResponse("fail", array(), "No data received");

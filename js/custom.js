@@ -486,6 +486,22 @@ var Games = function() {
 			self.updateGame(game);
 		}
 	}
+	
+	this.massUpdateOnEnter = function(game, event){
+		var $elem = $(event.target);
+
+		if( event.keyCode == 13 ){ //enter
+			self.massUpdate(game);
+		}		
+	}
+	
+	this.createGameOnEnter = function(game, event){
+		var $elem = $(event.target);
+
+		if( event.keyCode == 13 ){ //enter
+			self.createGame(game);
+		}		
+	}
 
 	this.triggerModal = function(viewModel, event){
 		var $elem = $(event.target);
@@ -576,7 +592,7 @@ var Games = function() {
 		var results = termString.split(andOrRegex);
 
 		//Sort the filter string into "and" and "or" parts
-		if(results.length > 0){
+		if(results.length > 1){
 			
 			//Make sure that the first term has/can have an "AND/OR" associated with it
 			if(results.length % 2 == 1){

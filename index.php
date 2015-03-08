@@ -40,6 +40,7 @@
 		- Let users filter by NULL or empty values
 		- Make mass update and create game modals submit by default when enter key is pressed like update does currently
 		- Break out filtering logic into subfunction maybe?
+		- Add ability to merge games
 	-->
 	<body>
 		<div class="navbar navbar-inverse navbar-fixed-top" role="navigation">
@@ -72,12 +73,12 @@
 					<form role="form-horizontal" data-bind="with: massUpdateData">
 						<div class="form-group">
 							<label for="source">Source</label>
-							<input type="text" class="form-control" id="edit_source" placeholder="Source" data-bind="value: source">
+							<input type="text" class="form-control" id="edit_source" placeholder="Source" data-bind="value: source, event: { keyup: $root.massUpdateOnEnter }">
 							<div class="clear"></div>
 						</div>
 						<div class="form-group">
 							<label for="platform">Platform</label>
-							<input type="text" class="form-control" id="edit_platform" placeholder="Platform" data-bind="value: platform">
+							<input type="text" class="form-control" id="edit_platform" placeholder="Platform" data-bind="value: platform, event: { keyup: $root.massUpdateOnEnter }">
 							<div class="clear"></div>
 						</div>
 						<div class="form-group">
@@ -102,17 +103,17 @@
 		        <form role="form-horizontal">
 						<div class="form-group">
 							<label for="title">Title</label>
-							<input type="text" class="form-control" placeholder="Title" data-bind="value: title">
+							<input type="text" class="form-control" placeholder="Title" data-bind="value: title, event: { keyup: $root.createGameOnEnter }">
 							<div class="clear"></div>
 						</div>
 						<div class="form-group">
 							<label for="source">Source</label>
-							<input type="text" class="form-control" placeholder="Source" data-bind="value: source">
+							<input type="text" class="form-control" placeholder="Source" data-bind="value: source, event: { keyup: $root.createGameOnEnter }">
 							<div class="clear"></div>
 						</div>
 						<div class="form-group">
 							<label for="platform">Platform</label>
-							<input type="text" class="form-control" placeholder="Platform" data-bind="value: platform">
+							<input type="text" class="form-control" placeholder="Platform" data-bind="value: platform, event: { keyup: $root.createGameOnEnter }">
 							<div class="clear"></div>
 						</div>
 					</form>
