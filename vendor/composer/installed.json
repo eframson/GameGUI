@@ -1,0 +1,39 @@
+[
+    {
+        "name": "ilya/fuzzy",
+        "version": "1.0.0",
+        "version_normalized": "1.0.0.0",
+        "source": {
+            "type": "git",
+            "url": "https://github.com/ilya-dev/fuzzy.git",
+            "reference": "8aef7171250a78ba9e9cd4eff9da164a6fb8ff59"
+        },
+        "dist": {
+            "type": "zip",
+            "url": "https://api.github.com/repos/ilya-dev/fuzzy/zipball/8aef7171250a78ba9e9cd4eff9da164a6fb8ff59",
+            "reference": "8aef7171250a78ba9e9cd4eff9da164a6fb8ff59",
+            "shasum": ""
+        },
+        "require-dev": {
+            "phpspec/phpspec": "~2"
+        },
+        "time": "2014-04-15 16:59:52",
+        "type": "library",
+        "installation-source": "dist",
+        "autoload": {
+            "psr-4": {
+                "Fuzzy\\": "src/Fuzzy"
+            }
+        },
+        "notification-url": "https://packagist.org/downloads/",
+        "license": [
+            "MIT"
+        ],
+        "description": "Nice PHP library for fuzzy string searching",
+        "keywords": [
+            "fuzzy",
+            "search",
+            "string"
+        ]
+    }
+]
