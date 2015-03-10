@@ -1,222 +1,6 @@
 <?php
-
+header('Content-Type: text/html; charset=utf-8');
 require("vendor/autoload.php");
-
-//GENERIC FUNCTIONS ---------------------------------------------------------------------------------------------------------------
-
-function makeCURLRequest($opts){
-	$ch = curl_init();
-	curl_setopt_array($ch, $opts);
-	$response = curl_exec($ch);
-	if(!$response){
-	    die('Error: "' . curl_error($ch) . '" - Code: ' . curl_errno($ch));
-	}
-	curl_close($ch);
-	return $response;
-}
-
-//GOG FUNCTIONS -------------------------------------------------------------------------------------------------------------------
-
-function makeGOGRequest($url){
-	
-	$headers = array(
-		'accept:text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8',
-		'accept-language:en-US,en;q=0.8',
-		'cache-control:no-cache',
-		'pragma:no-cache',
-		'user-agent:Mozilla/5.0 (Windows NT 6.3; WOW64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/41.0.2272.76 Safari/537.36',
-	);
-	
-	$opts = array(
-	    CURLOPT_RETURNTRANSFER => 1,
-	    CURLOPT_URL => $url,
-	    CURLOPT_COOKIE => 'Origin=80; uqid=zQ0rWwIth0CIbNWA61SJDzRBAb6BxdTjMYLLtskYrrh5gLTfqmIP4DWEs51qA1bQC1eHAnhkCZG%252BtUJjjWtgK6uYBewucsWRU1GIdumFo28%253D; cart_token=87b8a0ebd92abe49; gog_lc=US_USD_en; gog-al=WWb8OMdxNnWThSM6uCHU0Zz78_7UPOz3pVaGOpSP2BP6CSZs1XJN8kSrGBGDpm8li5EGU98PVAhdOh081_ioLgdUn9YPo7c2_aRZAy7yrStBh2_GCB8_LxiXbQZztAjG; _ga=GA1.2.1286008964.1353724899; __utma=95732803.1286008964.1353724899.1425714674.1425775815.9; __utmc=95732803; __utmz=95732803.1425711081.7.1.utmcsr=(direct)|utmccn=(direct)|utmcmd=(none); gog_us=gp7l2j8eafmq75hdj1nclhg333; gtw3lc=wAAqXAUriEqNPtKCtgPUD8cC9DyBPznbK0V40dThUeZy%252BCjRLPYnn6VXKjd5UHSI; sessions_gog_com=yAkqXQYuhxWKPNbQ5QaPD%252BZvjZEMEsSsI6%252Bh%252FZghhySm7GyPNxEbCEo4GgZHJ1eM2w8OpRNXsULIwyZtlV4Hpi842E9OZgo0f6MsQKXSQr47KmA2KpntWWAxbZDdUVJ7xfIigBTmc9mmFWlFcrtP45Cf%252BMqPBgOE575kSAcCfoOlvVR%252FIiRTSZKxV8Ayl1V9',
-	    CURLOPT_SSL_VERIFYPEER => false,
-	    CURLOPT_HTTPHEADER => $headers,
-	);
-	
-	return makeCURLRequest($opts);
-}
-
-function getAllGOGGameIds(){
-	$gameListData = array();
-	$page = 1;
-	
-	$hasMoreResults = true;
-	
-	while($hasMoreResults){
-		$url = getGOGGameListURL($page);
-		$response = makeGOGRequest($url);
-		$responseArray = json_decode($response,true);
-		
-		if( !array_key_exists("html", $responseArray) || trim($responseArray["html"]) == "" ){
-			$hasMoreResults = false;
-		}else{
-			$htmlToParse = $responseArray["html"];
-			$result = preg_match_all("/game_li_([0-9]*)/", $htmlToParse, $matches);
-			$gameListData = array_merge($gameListData, $matches[1]);
-						
-			$page++;
-		}
-	}
-	
-	return $gameListData;
-	
-}
-
-function getGOGGameListURL($page_no){
-	return "https://www.gog.com/account/ajax?a=gamesListMore&p=" . $page_no . "&s=title&q=&t=1425712827882&h=0";
-}
-
-function getGOGGameDetailURL($gameId){
-	return "https://www.gog.com/account/ajax?a=gamesListDetails&g=" . $gameId;
-}
-
-function getGOGData(){
-	$gameData = array();
-	$gameIds = getAllGOGGameIds();
-	
-	foreach($gameIds as $gameId){
-		$thisGameData = array("id" => $gameId);
-		$detailUrl = getGOGGameDetailURL($gameId);
-		$gameDetails = makeGOGRequest($detailUrl);
-		$responseArray = json_decode($gameDetails,true);
-
-		$htmlToParse = $responseArray["details"]["html"];
-
-		if( strpos($htmlToParse, "list-downloads-win") !== false){
-			$thisGameData["windows"]=true;
-		}else{
-			$thisGameData["windows"]=false;
-		}
-
-		if( strpos($htmlToParse, "list-downloads-mac") !== false){
-			$thisGameData["mac"]=true;
-		}else{
-			$thisGameData["mac"]=false;
-		}
-		
-		if( strpos($htmlToParse, "list-downloads-linux") !== false){
-			$thisGameData["linux"]=true;
-		}else{
-			$thisGameData["linux"]=false;
-		}
-		
-		$hasMatches = preg_match('/<h2>\s+<a href="http[^"]+">([^<]+)<\/a>/', $htmlToParse, $matches);
-		if($hasMatches == 1){
-			$thisGameData["name"] = trim($matches[1]);
-		}else{
-			preg_match('/<h2>([^<]+)<\/h2>/', $htmlToParse, $matches);
-			$thisGameData["name"] = trim($matches[1]);
-		}
-		
-		$hasMatches = preg_match('/Purchased on ([^<]+)</', $htmlToParse, $matches);
-		if($hasMatches == 1){
-			$thisGameData["purchased_date"] = trim($matches[1]);
-		}else{
-			$thisGameData["purchased_date"] = null;
-		}
-
-		array_push($gameData, $thisGameData);
-	}
-
-	return $gameData;
-}
-
-//STEAM FUNCTIONS ---------------------------------------------------------------------------------------------------------------
-
-//Run the following on https://store.steampowered.com/account/store_transactions to get an array of purchase data
-
-/*
-var transactions = Array();
-var thisYear = new Date().getFullYear();
-jQuery("#store_transactions .block:first-child .transactionRow").each(function(idx, elem){
-	var $this = jQuery(elem);
-	var thisTrans = {};
-	
-	if(!$this.hasClass("transactionLegend")){
-		thisTrans.transDate = $this.children(".transactionRowDate").html();
-		if(!thisTrans.transDate.match(/,/)){
-			thisTrans.transDate+=", " + thisYear;
-			
-		}
-		thisTrans.transType = $this.children(".transactionRowEvent").html();
-		thisTrans.transDesc = $this.find(".transactionRowTitle").html();
-		
-		transactions.push(thisTrans);
-	}
-	
-});
-
-console.log(JSON.stringify(transactions)); 
- */
-
-function getSteamGameListURL(){
-	return "http://api.steampowered.com/IPlayerService/GetOwnedGames/v0001/?key=95F6CEF40E22F8140568E5EF5D010744&steamid=76561197984509656&format=json&include_appinfo=1";
-}
-
-function getSteamGameDetailURL($gameId){
-	return "http://store.steampowered.com/api/appdetails/?appids=" . $gameId;
-}
-
-function makeSteamRequest($url){
-	$opts = array(
-	    CURLOPT_RETURNTRANSFER => 1,
-	    CURLOPT_URL => $url,
-	);
-	
-	return makeCURLRequest($opts);
-}
-
-function getAllSteamGameIds(){
-	$response = makeSteamRequest(getSteamGameListURL());
-	$responseArray = json_decode($response,true);
-	$gameIds = array();
-	
-	foreach($responseArray["response"]["games"] as $gameData){
-		array_push($gameIds, $gameData["appid"]);
-	}
-	
-	return $gameIds;
-}
-
-function getSteamData(){
-	$steamGameIds = getAllSteamGameIds();
-	$steamGameData = array();
-	
-	$i=0;
-	$start=300;
-	$stop=349;
-	foreach($steamGameIds as $gameId){
-		$thisGameData = array();
-		if($i >= $start && $i < $stop){
-			$response = makeSteamRequest(getSteamGameDetailURL($gameId));
-			$responseArray = json_decode($response,true);
-			
-			if(array_key_exists("data", $responseArray[$gameId])){
-				$platformData = $responseArray[$gameId]["data"]["platforms"];
-				$name = $responseArray[$gameId]["data"]["name"];
-				
-				$thisGameData["id"] = $gameId;
-				$thisGameData["name"] = $name;
-				$thisGameData["windows"] = $platformData["windows"];
-				$thisGameData["mac"] = $platformData["mac"];
-				$thisGameData["linux"] = $platformData["linux"];				
-			}else{
-				$thisGameData["id"] = $gameId;
-				$thisGameData["name"] = "ERROR";
-				$thisGameData["windows"] = null;
-				$thisGameData["mac"] = null;
-				$thisGameData["linux"] = null;	
-			}
-			
-			array_push($steamGameData, $thisGameData);
-		}
-		$i++;
-	}
-	
-	return $steamGameData;
-}
 
 function tryToMatchPurchaseData($purchaseDataJson, $gameDataJson){
 	$purchaseDataArray = json_decode($purchaseDataJson, true);
@@ -278,15 +62,59 @@ function tryToMatchPurchaseData($purchaseDataJson, $gameDataJson){
 	return $possibleMatches;
 }
 
+function tryToMatchUnmatchedData($purchaseDataJson, $gameDataJson, $unmatchedList){
+	$purchaseDataArray = json_decode($purchaseDataJson, true);
+	$gameDataArray = json_decode($gameDataJson,true);
+	$unmatchedArray = json_decode($unmatchedList, true);
+	
+	$haystack = array();
+	$indexedHaystack = array();
+	$possibleMatches = array();
+	$matchMetaData = array();
+	$fuzzy = new Fuzzy\Fuzzy;
+	
+	foreach($gameDataArray as $gameData){
+		$indexedHaystack[$gameData["name"]] = $gameData;
+	}
+	
+	$haystack = array_keys($indexedHaystack);
+	
+	foreach($unmatchedArray as $unmatchedCompositeString){
+		
+		$individualUnmatchedItems = explode(",", $unmatchedCompositeString);
+		
+		foreach($individualUnmatchedItems as $needle){
+			
+			$numMatches = 0;
+			$accuracy = 1;
+			$matchAttempt = array();
+			while($numMatches < 1 && $accuracy < 30){
+				$matchAttempt = $fuzzy->search($haystack, $needle, $accuracy);
+				
+				$numMatches = count($matchAttempt);
+				
+				$accuracy++;
+			}
+			
+			if($numMatches < 1){
+				$matchAttempt = "NO MATCHES FOUND";
+			}
+			
+			$possibleMatches[$needle]["parentString"] = $unmatchedCompositeString;
+			$possibleMatches[$needle]["matches"] = $matchAttempt;
+			
+		}
+	}
+	
+	return $possibleMatches;
+}
+
+$unmatchedList = '["Grand Theft Auto V Pre-Purchase (Tier 1)","FINAL FANTASY XIII (NE), Hatoful Boyfriend, This War of Mine","Next Car Game: Wreckfest, Endless Legend - Classic Pack, Shadowrun: Dragonfall - Director\'s Cut, The Witcher Adventure Game","Age of Mythology EX, LocoCycle, Rise of Nations: Extended Edition","Ship Simulator Extremes, Lords of the Black Sun, Metal Gear Rising","Starwars Battlefront II, Starwars Republic Commando, Star Wars: KOTOR, Star Wars: Empire at War Gold, Star Wars: The Force Unleashed II, Star Wars: Knights of the Old Republic II","Assassin\'s Creed Black Flag Digital Standard Edition","Age of Empires Legacy Bundle Including The Forgotten","Orcs Must Die 2 - Complete Pack - 2 Pack, Fallen Enchantress: Legendary Heroes","Oblivion Game of the Year Deluxe, Morrowind Game of the Year","Prison Architect Standard, StarForge, Final Fantasy VII","The Orange Box, Supreme Commander 2, Demigod, Warp","Gnomoria, Kerbal Space Program, Penny Arcade\'s On the Rain-Slick Precipice of Darkness 4","Serious Sam 3 BFE, Sins of a Solar Empire®: Rebellion, Ticket to Ride","Total War: Shogun 2, Homefront (ROW), The Walking Dead","Qube","Legendary, Command and Conquer: Red Alert 3, Command and Conquer: Red Alert 3 - Uprising, Command and Conquer: Tiberium Wars, Command and Conquer: Kane\'s Wrath","Tropico 4 Bundle","S.T.A.L.K.E.R. Bundle","Deus Ex: Human Revolution - Standard Edition","Double Fine Bundle","L.A. Noire Complete Edition","Warhammer 40,000: Dawn of War II - Complete Pack","Railworks 3: TS2012","Skyrim","Far Cry 2","Crysis Maximum Edition Bundle","Sid Meier\'s Civilization IV: The Complete Edition","Skyrim - Dawnguard","Skyrim Hearthfire","Thief II","Prototype, Prototype 2","RAGE, XCOM Enemy Unknown (ROW)","THQ Humble Bundle Core - Nov 2012","Humble Indie Bundle for Android","Sam and Max: Seasons 1-3","FEAR Complete Pack (NA)","Humble Indie Bundle for Android Bonus","Batman: Arkham Asylum GOTY","Civ V Gods and Kings Expansion","The Elder Scrolls V: Skyrim - Dragonborn","Hitman Absolution Professional, Reus","Grand Theft Auto IV (US/AU), The Sims 3","Dawn of War Retail","Rush","Team Fortress 2","Galactic Civilizations® II","Cargo Commander, Papers, Please","Assassin\'s Creed 3 Standard Edition","Sid Meier\'s Civilization V: Brave New World","GTA IV Complete Bundle","Sleeping Dogs, Rogue Legacy","Grimm Complete Pack","Redshirt","Metal Slug 3 Steam Store and Retail Key","Urban Trials","Silent Hunter 5: Gold Edition, Future Wars","Wallet $5.00 Credit","Planetary Annihilation, Car Mechanic Simulator","Star Wars - The Force Unleashed","Arma 2: Complete Collection","XCOM: Enemy Within","X3 Terran War - X3TC and X3AP Bundle","Lucasarts Adventure Bundle, Organ Trail: Director\'s Cut","Xenonauts, Europa Universalis IV Extreme Edition"]';
 $purchaseDataJson = '[{"transDate":"Mar 7, 2015","transType":"Purchase","transDesc":"Middle-earth: Shadow of Mordor"},{"transDate":"Mar 3, 2015","transType":"Purchase","transDesc":"Besiege"},{"transDate":"Mar 2, 2015","transType":"Purchase","transDesc":"Galactic Civilizations III"},{"transDate":"Feb 11, 2015","transType":"CD Key","transDesc":"Medieval Engineers Deluxe - Beta Comp"},{"transDate":"Jan 31, 2015","transType":"CD Key","transDesc":"Valkyria Chronicles Retail (RoW)"},{"transDate":"Jan 27, 2015","transType":"Purchase","transDesc":"The Walking Dead Season 2"},{"transDate":"Jan 19, 2015","transType":"Purchase","transDesc":"Grand Theft Auto V Pre-Purchase (Tier 1)"},{"transDate":"Jan 2, 2015","transType":"Purchase","transDesc":"Ultimate General: Gettysburg"},{"transDate":"Jan 1, 2015","transType":"Purchase","transDesc":"Invisible, Inc."},{"transDate":"Dec 30, 2014","transType":"Purchase","transDesc":"Wasteland 2 - Classic"},{"transDate":"Dec 29, 2014","transType":"Purchase","transDesc":"BattleBlock Theater"},{"transDate":"Dec 29, 2014","transType":"Purchase","transDesc":"FINAL FANTASY XIII (NE), Hatoful Boyfriend, This War of Mine"},{"transDate":"Dec 29, 2014","transType":"Purchase","transDesc":"X Rebirth"},{"transDate":"Dec 28, 2014","transType":"Purchase","transDesc":"Mount and Blade: Warband"},{"transDate":"Dec 28, 2014","transType":"Purchase","transDesc":"Watch_Dogs Standard"},{"transDate":"Dec 22, 2014","transType":"Purchase","transDesc":"The Escapists Early Access"},{"transDate":"Dec 21, 2014","transType":"Purchase","transDesc":"Xenonauts, Europa Universalis IV Extreme Edition"},{"transDate":"Dec 20, 2014","transType":"Purchase","transDesc":"TransOcean - The Shipping Company"},{"transDate":"Dec 19, 2014","transType":"Purchase","transDesc":"DuckTales Remastered"},{"transDate":"Nov 28, 2014","transType":"Purchase","transDesc":"Next Car Game: Wreckfest, Endless Legend - Classic Pack, Shadowrun: Dragonfall - Director\'s Cut, The Witcher Adventure Game"},{"transDate":"Nov 28, 2014","transType":"CD Key","transDesc":"Sid Meier\'s Civilization: Beyond Earth ROW"},{"transDate":"Oct 10, 2014","transType":"Purchase","transDesc":"Game of Thrones"},{"transDate":"Oct 5, 2014","transType":"CD Key","transDesc":"Life is Feudal: Your Own"},{"transDate":"Sep 6, 2014","transType":"Purchase","transDesc":"The Expendabros"},{"transDate":"Aug 29, 2014","transType":"Purchase","transDesc":"Age of Mythology EX, LocoCycle, Rise of Nations: Extended Edition"},{"transDate":"Aug 21, 2014","transType":"Purchase","transDesc":"Borderlands 2 Game of the Year"},{"transDate":"Aug 17, 2014","transType":"Purchase","transDesc":"Lucasarts Adventure Bundle, Organ Trail: Director\'s Cut"},{"transDate":"Aug 11, 2014","transType":"Purchase","transDesc":"Counter-Strike: Global Offensive"},{"transDate":"Jul 23, 2014","transType":"CD Key","transDesc":"Out of the Park Baseball 14"},{"transDate":"Jul 23, 2014","transType":"CD Key","transDesc":"Universe Sandbox Comp"},{"transDate":"Jul 23, 2014","transType":"CD Key","transDesc":"Cook, Serve, Delicious! Retail Key"},{"transDate":"Jul 23, 2014","transType":"CD Key","transDesc":"Turbo Dismount"},{"transDate":"Jun 29, 2014","transType":"Purchase","transDesc":"Lichdom: Battlemage"},{"transDate":"Jun 29, 2014","transType":"Purchase","transDesc":"Ship Simulator Extremes, Lords of the Black Sun, Metal Gear Rising"},{"transDate":"Jun 28, 2014","transType":"Purchase","transDesc":"Wolfenstein: The New Order ROW"},{"transDate":"Jun 28, 2014","transType":"Purchase","transDesc":"Broforce"},{"transDate":"Jun 26, 2014","transType":"Purchase","transDesc":"Goat Simulator"},{"transDate":"Jun 24, 2014","transType":"Purchase","transDesc":"Viscera Cleanup Detail"},{"transDate":"Jun 23, 2014","transType":"Purchase","transDesc":"Planet Explorers"},{"transDate":"Jun 22, 2014","transType":"Purchase","transDesc":"X3 Terran War - X3TC and X3AP Bundle"},{"transDate":"Jun 22, 2014","transType":"Purchase","transDesc":"Epic Battle Fantasy 4"},{"transDate":"Jun 20, 2014","transType":"Purchase","transDesc":"Agarest: Generations of War"},{"transDate":"Jun 19, 2014","transType":"Purchase","transDesc":"7 Days to Die"},{"transDate":"Jun 17, 2014","transType":"Purchase","transDesc":"Tiny and Big: Grandpa\'s Leftovers"},{"transDate":"May 29, 2014","transType":"Purchase","transDesc":"PAYDAY 2"},{"transDate":"May 22, 2014","transType":"CD Key","transDesc":"XCOM: Enemy Within"},{"transDate":"May 15, 2014","transType":"Purchase","transDesc":"Arma 2: Complete Collection"},{"transDate":"May 4, 2014","transType":"Purchase","transDesc":"Starwars Battlefront II, Starwars Republic Commando, Star Wars: KOTOR, Star Wars: Empire at War Gold, Star Wars: The Force Unleashed II, Star Wars: Knights of the Old Republic II"},{"transDate":"Apr 15, 2014","transType":"CD Key","transDesc":"Assassin\'s Creed Black Flag Digital Standard Edition"},{"transDate":"Apr 4, 2014","transType":"CD Key","transDesc":"Star Wars - The Force Unleashed"},{"transDate":"Mar 31, 2014","transType":"Purchase","transDesc":"Batman Arkham Origins"},{"transDate":"Mar 24, 2014","transType":"Purchase","transDesc":"Nail\'d"},{"transDate":"Mar 15, 2014","transType":"Purchase","transDesc":"Banished"},{"transDate":"Mar 2, 2014","transType":"Purchase","transDesc":"Planetary Annihilation, Car Mechanic Simulator"},{"transDate":"Feb 23, 2014","transType":"Wallet Credit","transDesc":"Wallet $5.00 Credit"},{"transDate":"Feb 22, 2014","transType":"Purchase","transDesc":"Silent Hunter 5: Gold Edition, Future Wars"},{"transDate":"Feb 18, 2014","transType":"Purchase","transDesc":"Urban Trials"},{"transDate":"Feb 8, 2014","transType":"Purchase","transDesc":"How to Survive Retail and Steam"},{"transDate":"Feb 7, 2014","transType":"Purchase","transDesc":"Democracy 3"},{"transDate":"Feb 4, 2014","transType":"Purchase","transDesc":"Metal Slug 3 Steam Store and Retail Key"},{"transDate":"Feb 2, 2014","transType":"Purchase","transDesc":"Kingdoms of Amalur: Reckoning"},{"transDate":"Jan 27, 2014","transType":"Purchase","transDesc":"Redshirt"},{"transDate":"Jan 25, 2014","transType":"Purchase","transDesc":"Defender\'s Quest: Valley of the Forgotten"},{"transDate":"Jan 7, 2014","transType":"Purchase","transDesc":"Grimm Complete Pack"},{"transDate":"Jan 6, 2014","transType":"Purchase","transDesc":"Proteus"},{"transDate":"Jan 2, 2014","transType":"Purchase","transDesc":"Age of Empires Legacy Bundle Including The Forgotten"},{"transDate":"Jan 1, 2014","transType":"Purchase","transDesc":"Castle Story"},{"transDate":"Dec 28, 2013","transType":"Purchase","transDesc":"Castlestorm"},{"transDate":"Dec 27, 2013","transType":"Purchase","transDesc":"Orcs Must Die 2 - Complete Pack - 2 Pack, Fallen Enchantress: Legendary Heroes"},{"transDate":"Dec 23, 2013","transType":"Purchase","transDesc":"Solar 2"},{"transDate":"Dec 21, 2013","transType":"Purchase","transDesc":"Craft The World"},{"transDate":"Dec 1, 2013","transType":"Purchase","transDesc":"Deadpool"},{"transDate":"Nov 29, 2013","transType":"Purchase","transDesc":"Poker Night 2"},{"transDate":"Nov 29, 2013","transType":"CD Key","transDesc":"Tomb Raider (ROW)"},{"transDate":"Nov 27, 2013","transType":"Purchase","transDesc":"DLC Quest"},{"transDate":"Nov 27, 2013","transType":"Purchase","transDesc":"Thomas Was Alone"},{"transDate":"Nov 27, 2013","transType":"Purchase","transDesc":"Sleeping Dogs, Rogue Legacy"},{"transDate":"Nov 4, 2013","transType":"Purchase","transDesc":"Guacamelee! Gold Edition"},{"transDate":"Nov 3, 2013","transType":"Purchase","transDesc":"GTA IV Complete Bundle"},{"transDate":"Oct 31, 2013","transType":"Purchase","transDesc":"Game Dev Tycoon"},{"transDate":"Oct 28, 2013","transType":"Purchase","transDesc":"Space Engineers"},{"transDate":"Oct 22, 2013","transType":"Purchase","transDesc":"Spacebase DF-9"},{"transDate":"Oct 18, 2013","transType":"Purchase","transDesc":"The Stanley Parable"},{"transDate":"Oct 17, 2013","transType":"CD Key","transDesc":"Call of Juarez Gunslinger Retail"},{"transDate":"Oct 15, 2013","transType":"Purchase","transDesc":"Thirty Flights of Loving"},{"transDate":"Oct 11, 2013","transType":"Purchase","transDesc":"DmC: Devil May Cry (ROW)"},{"transDate":"Oct 11, 2013","transType":"CD Key","transDesc":"Sid Meier\'s Civilization V: Brave New World"},{"transDate":"Oct 9, 2013","transType":"Purchase","transDesc":"Assassin\'s Creed 3 Standard Edition"},{"transDate":"Oct 3, 2013","transType":"CD Key","transDesc":"The Bureau: XCOM Declassified"},{"transDate":"Oct 1, 2013","transType":"CD Key","transDesc":"Saints Row IV NA - ROW (ESD)"},{"transDate":"Sep 22, 2013","transType":"Purchase","transDesc":"RollerCoaster Tycoon 3: Platinum"},{"transDate":"Sep 13, 2013","transType":"Purchase","transDesc":"Cargo Commander, Papers, Please"},{"transDate":"Aug 17, 2013","transType":"Purchase","transDesc":"Grand Ages: Rome Gold"},{"transDate":"Aug 3, 2013","transType":"Purchase","transDesc":"Oblivion Game of the Year Deluxe, Morrowind Game of the Year"},{"transDate":"Jul 20, 2013","transType":"Purchase","transDesc":"Prison Architect Standard, StarForge, Final Fantasy VII"},{"transDate":"Jul 20, 2013","transType":"Purchase","transDesc":"Towns"},{"transDate":"Jul 19, 2013","transType":"Purchase","transDesc":"Baldur\'s Gate: Enhanced Edition"},{"transDate":"Jul 18, 2013","transType":"Purchase","transDesc":"Euro Truck Simulator 2"},{"transDate":"Jul 17, 2013","transType":"Purchase","transDesc":"Gunpoint"},{"transDate":"Jul 16, 2013","transType":"Purchase","transDesc":"Galactic Civilizations® II"},{"transDate":"Jul 15, 2013","transType":"Purchase","transDesc":"Fallout 3 - Game of the Year"},{"transDate":"Jul 14, 2013","transType":"Purchase","transDesc":"Hitman Absolution Professional, Reus"},{"transDate":"Jul 13, 2013","transType":"Purchase","transDesc":"Sins of a Solar Empire® - Trinity"},{"transDate":"Jul 13, 2013","transType":"Purchase","transDesc":"The Orange Box, Supreme Commander 2, Demigod, Warp"},{"transDate":"Jul 11, 2013","transType":"Purchase","transDesc":"The Elder Scrolls V: Skyrim - Dragonborn"},{"transDate":"Jul 2, 2013","transType":"Purchase","transDesc":"Kinetic Void"},{"transDate":"Jun 13, 2013","transType":"Purchase","transDesc":"Gnomoria, Kerbal Space Program, Penny Arcade\'s On the Rain-Slick Precipice of Darkness 4"},{"transDate":"Jun 6, 2013","transType":"Purchase","transDesc":"Civ V Gods and Kings Expansion"},{"transDate":"May 27, 2013","transType":"Purchase","transDesc":"Skyward Collapse"},{"transDate":"May 5, 2013","transType":"Purchase","transDesc":"Spec Ops The Line (ROW)"},{"transDate":"Apr 25, 2013","transType":"Purchase","transDesc":"Bully: Scholarship Edition"},{"transDate":"Apr 19, 2013","transType":"Purchase","transDesc":"Surgeon Simulator"},{"transDate":"Apr 4, 2013","transType":"Purchase","transDesc":"Omerta - City of Gangsters"},{"transDate":"Mar 29, 2013","transType":"Purchase","transDesc":"Under the Ocean"},{"transDate":"Mar 26, 2013","transType":"Purchase","transDesc":"The Cave"},{"transDate":"Mar 16, 2013","transType":"Purchase","transDesc":"Far Cry 3"},{"transDate":"Mar 14, 2013","transType":"Purchase","transDesc":"Little Inferno"},{"transDate":"Feb 19, 2013","transType":"Purchase","transDesc":"Garry\'s Mod"},{"transDate":"Jan 31, 2013","transType":"Purchase","transDesc":"Antichamber"},{"transDate":"Jan 5, 2013","transType":"Purchase","transDesc":"Batman: Arkham Asylum GOTY"},{"transDate":"Jan 3, 2013","transType":"Purchase","transDesc":"Torchlight II"},{"transDate":"Dec 22, 2012","transType":"Purchase","transDesc":"Dishonored (ROW)"},{"transDate":"Dec 21, 2012","transType":"Partial Credit","transDesc":"Grand Theft Auto IV (US/AU), The Sims 3"},{"transDate":"Dec 10, 2012","transType":"CD Key","transDesc":"Dawn of War Retail"},{"transDate":"Dec 9, 2012","transType":"CD Key","transDesc":"Humble Indie Bundle for Android Bonus"},{"transDate":"Dec 9, 2012","transType":"CD Key","transDesc":"Red Faction: Armageddon - Path to War"},{"transDate":"Dec 9, 2012","transType":"CD Key","transDesc":"Titan Quest Retail"},{"transDate":"Dec 9, 2012","transType":"CD Key","transDesc":"Toki Tori Retail"},{"transDate":"Dec 9, 2012","transType":"CD Key","transDesc":"Humble Indie Bundle for Android"},{"transDate":"Dec 1, 2012","transType":"Purchase","transDesc":"Unreal Tournament 3"},{"transDate":"Dec 1, 2012","transType":"CD Key","transDesc":"Saints Row: The Third Retail"},{"transDate":"Dec 1, 2012","transType":"CD Key","transDesc":"THQ Humble Bundle Core - Nov 2012"},{"transDate":"Nov 23, 2012","transType":"Purchase","transDesc":"Serious Sam 3 BFE, Sins of a Solar Empire®: Rebellion, Ticket to Ride"},{"transDate":"Nov 22, 2012","transType":"Purchase","transDesc":"Tower Wars"},{"transDate":"Nov 22, 2012","transType":"Purchase","transDesc":"RAGE, XCOM Enemy Unknown (ROW)"},{"transDate":"Nov 12, 2012","transType":"Purchase","transDesc":"Don\'t Starve 2-Pack"},{"transDate":"Oct 29, 2012","transType":"Purchase","transDesc":"Prototype, Prototype 2"},{"transDate":"Oct 7, 2012","transType":"Purchase","transDesc":"Thief II"},{"transDate":"Oct 5, 2012","transType":"Purchase","transDesc":"Skyrim Hearthfire"},{"transDate":"Oct 3, 2012","transType":"Purchase","transDesc":"Skyrim - Dawnguard"},{"transDate":"Jul 21, 2012","transType":"Purchase","transDesc":"Sid Meier\'s Civilization IV: The Complete Edition"},{"transDate":"Jul 20, 2012","transType":"Purchase","transDesc":"Bulletstorm"},{"transDate":"Jul 20, 2012","transType":"Purchase","transDesc":"Crysis Maximum Edition Bundle"},{"transDate":"Jul 20, 2012","transType":"Purchase","transDesc":"Far Cry 2"},{"transDate":"Jul 19, 2012","transType":"Purchase","transDesc":"Red Faction Guerrilla"},{"transDate":"Jul 19, 2012","transType":"Purchase","transDesc":"Fable III Collection"},{"transDate":"Jul 18, 2012","transType":"Purchase","transDesc":"Railworks 3: TS2012"},{"transDate":"Jul 18, 2012","transType":"Purchase","transDesc":"SimCity 4 Deluxe"},{"transDate":"Jul 18, 2012","transType":"Purchase","transDesc":"S.T.A.L.K.E.R. Bundle"},{"transDate":"Jul 17, 2012","transType":"Purchase","transDesc":"Just Cause 2"},{"transDate":"Jul 17, 2012","transType":"Purchase","transDesc":"Batman Arkham City"},{"transDate":"Jul 16, 2012","transType":"Purchase","transDesc":"Space Pirates and Zombies(SPAZ)"},{"transDate":"Jul 15, 2012","transType":"Purchase","transDesc":"Darkness II (ROW)"},{"transDate":"Jul 15, 2012","transType":"Purchase","transDesc":"Total War: Shogun 2, Homefront (ROW), The Walking Dead"},{"transDate":"Jul 15, 2012","transType":"Purchase","transDesc":"Qube"},{"transDate":"Jul 14, 2012","transType":"Purchase","transDesc":"Tropico 4 Bundle"},{"transDate":"Jul 3, 2012","transType":"Purchase","transDesc":"Legendary, Command and Conquer: Red Alert 3, Command and Conquer: Red Alert 3 - Uprising, Command and Conquer: Tiberium Wars, Command and Conquer: Kane\'s Wrath"},{"transDate":"Jun 29, 2012","transType":"Purchase","transDesc":"Penny Arcade\'s on the Rain-Slick Precipice of Darkness 3 Launch Bundle"},{"transDate":"May 4, 2012","transType":"Purchase","transDesc":"Endless Space - Emperor Special Edition (Preorder)"},{"transDate":"Apr 12, 2012","transType":"Purchase","transDesc":"Fallout New Vegas Ultimate"},{"transDate":"Mar 23, 2012","transType":"Purchase","transDesc":"Deus Ex: Human Revolution - Standard Edition"},{"transDate":"Mar 16, 2012","transType":"Purchase","transDesc":"Rochard"},{"transDate":"Mar 11, 2012","transType":"Purchase","transDesc":"Sid Meier\'s Civilization V: GOTY"},{"transDate":"Mar 7, 2012","transType":"Purchase","transDesc":"Double Fine Bundle"},{"transDate":"Feb 4, 2012","transType":"Purchase","transDesc":"Warhammer 40,000: Dawn of War II - Complete Pack"},{"transDate":"Jan 1, 2012","transType":"Purchase","transDesc":"L.A. Noire Complete Edition"},{"transDate":"Dec 26, 2011","transType":"Purchase","transDesc":"Dungeons: The Dark Lord Preorder"},{"transDate":"Dec 25, 2011","transType":"Purchase","transDesc":"Skyrim"},{"transDate":"Dec 7, 2011","transType":"Purchase","transDesc":"Orcs Must Die!"},{"transDate":"Nov 27, 2011","transType":"Purchase","transDesc":"Demolition, Inc."},{"transDate":"Nov 23, 2011","transType":"Purchase","transDesc":"Renegade Ops + DLC"},{"transDate":"Nov 20, 2011","transType":"Purchase","transDesc":"Lightfish"},{"transDate":"Oct 23, 2011","transType":"Purchase","transDesc":"Rock of Ages"},{"transDate":"Oct 11, 2011","transType":"Purchase","transDesc":"Duke Nukem Forever"},{"transDate":"Oct 7, 2011","transType":"Purchase","transDesc":"Mass Effect 2"},{"transDate":"Sep 15, 2011","transType":"Purchase","transDesc":"Magicka"},{"transDate":"Aug 29, 2011","transType":"Purchase","transDesc":"Warhammer 40,000: Space Marine (preorder)"},{"transDate":"Aug 19, 2011","transType":"Purchase","transDesc":"From Dust"},{"transDate":"Jul 10, 2011","transType":"Purchase","transDesc":"Sam and Max: Seasons 1-3"},{"transDate":"Jul 9, 2011","transType":"Purchase","transDesc":"Terraria"},{"transDate":"Jun 18, 2011","transType":"Purchase","transDesc":"FEAR Complete Pack (NA)"},{"transDate":"Jun 10, 2011","transType":"Purchase","transDesc":"iBomber Defense"},{"transDate":"May 8, 2011","transType":"Purchase","transDesc":"BEEP"},{"transDate":"Apr 26, 2011","transType":"CD Key","transDesc":"Portal 2 Retail"},{"transDate":"Apr 10, 2011","transType":"Purchase","transDesc":"The Wonderful End of the World"},{"transDate":"Dec 26, 2010","transType":"Purchase","transDesc":"FlatOut Ultimate Carnage (NA)"},{"transDate":"Dec 26, 2010","transType":"Purchase","transDesc":"Eets"},{"transDate":"Dec 13, 2010","transType":"Purchase","transDesc":"Greed Corp"},{"transDate":"Dec 12, 2010","transType":"Purchase","transDesc":"Rush"},{"transDate":"May 26, 2009","transType":"Purchase","transDesc":"Team Fortress 2"},{"transDate":"Jan 10, 2009","transType":"CD Key","transDesc":"Saints Row 2 Retail"}]';
 $gameDataJson = '[{"id":220,"name":"Half-Life 2","windows":true,"mac":true,"linux":true},{"id":240,"name":"Counter-Strike: Source","windows":true,"mac":true,"linux":true},{"id":280,"name":"Half-Life: Source","windows":true,"mac":true,"linux":true},{"id":320,"name":"Half-Life 2: Deathmatch","windows":true,"mac":true,"linux":true},{"id":340,"name":"Half-Life 2: Lost Coast","windows":true,"mac":true,"linux":true},{"id":360,"name":"Half-Life Deathmatch: Source","windows":true,"mac":true,"linux":true},{"id":4000,"name":"Garry\'s Mod","windows":true,"mac":true,"linux":true},{"id":6100,"name":"Eets","windows":true,"mac":true,"linux":false},{"id":380,"name":"Half-Life 2: Episode One","windows":true,"mac":true,"linux":true},{"id":400,"name":"Portal","windows":true,"mac":true,"linux":true},{"id":420,"name":"Half-Life 2: Episode Two","windows":true,"mac":true,"linux":true},{"id":2700,"name":"RollerCoaster Tycoon\u00ae 3: Platinum","windows":true,"mac":true,"linux":false},{"id":13210,"name":"Unreal Tournament 3 Black","windows":true,"mac":false,"linux":false},{"id":15500,"name":"The Wonderful End of the World","windows":true,"mac":false,"linux":false},{"id":12360,"name":"FlatOut: Ultimate Carnage","windows":true,"mac":false,"linux":false},{"id":19900,"name":"Far Cry\u00ae 2: Fortune\'s Edition","windows":true,"mac":false,"linux":false},{"id":12200,"name":"Bully: Scholarship Edition","windows":true,"mac":false,"linux":false},{"id":9480,"name":"Saints Row 2","windows":true,"mac":false,"linux":false},{"id":16730,"name":"Legendary","windows":true,"mac":false,"linux":false},{"id":12210,"name":"Grand Theft Auto IV","windows":true,"mac":false,"linux":false},{"id":17480,"name":"Command & Conquer: Red Alert 3","windows":true,"mac":false,"linux":false},{"id":10150,"name":"Prototype\u2122","windows":true,"mac":false,"linux":false},{"id":22330,"name":"The Elder Scrolls IV: Oblivion\u00ae Game of the Year Edition","windows":true,"mac":false,"linux":false},{"id":22320,"name":"The Elder Scrolls III: Morrowind\u00ae Game of the Year Edition","windows":true,"mac":false,"linux":false},{"id":6060,"name":"Star Wars Battlefront\u00ae II","windows":true,"mac":false,"linux":false},{"id":6000,"name":"Star Wars Republic Commando\u2122","windows":true,"mac":false,"linux":false},{"id":32370,"name":"Star Wars: Knights of the Old Republic","windows":true,"mac":true,"linux":false},{"id":6010,"name":"Indiana Jones\u00ae and the Fate of Atlantis\u2122 ","windows":true,"mac":true,"linux":false},{"id":6040,"name":"The Dig\u00ae ","windows":true,"mac":true,"linux":false},{"id":32310,"name":"Indiana Jones\u00ae and the Last Crusade\u2122","windows":true,"mac":true,"linux":false},{"id":32340,"name":"LOOM\u2122","windows":true,"mac":true,"linux":false},{"id":20500,"name":"Red Faction Guerrilla Steam Edition","windows":true,"mac":false,"linux":false},{"id":24800,"name":"Command & Conquer: Red Alert 3 - Uprising","windows":true,"mac":false,"linux":false},{"id":24790,"name":"Command & Conquer 3: Tiberium Wars","windows":true,"mac":false,"linux":false},{"id":24810,"name":"Command & Conquer 3: Kane\'s Wrath","windows":true,"mac":false,"linux":false},{"id":32430,"name":"Star Wars The Force Unleashed: Ultimate Sith Edition","windows":true,"mac":true,"linux":false},{"id":22370,"name":"Fallout 3: Game of the Year Edition","windows":true,"mac":false,"linux":false},{"id":24980,"name":"Mass Effect 2","windows":true,"mac":false,"linux":false},{"id":23450,"name":"Grand Ages: Rome","windows":true,"mac":false,"linux":false},{"id":40100,"name":"Supreme Commander 2","windows":true,"mac":false,"linux":false},{"id":48110,"name":"Silent Hunter 5\u00ae: Battle of the Atlantic","windows":true,"mac":false,"linux":false},{"id":8190,"name":"Just Cause 2","windows":true,"mac":false,"linux":false},{"id":35140,"name":"Batman: Arkham Asylum Game of the Year Edition","windows":true,"mac":false,"linux":false},{"id":3900,"name":"Sid Meier\'s Civilization\u00ae IV","windows":true,"mac":true,"linux":false},{"id":3990,"name":"Civilization IV\u00ae: Warlords","windows":true,"mac":true,"linux":false},{"id":8800,"name":"Civilization IV: Beyond the Sword","windows":true,"mac":true,"linux":false},{"id":16810,"name":"Sid Meier\'s Civilization IV: Colonization","windows":true,"mac":true,"linux":false},{"id":34440,"name":"Sid Meier\'s Civilization\u00ae IV","windows":true,"mac":true,"linux":false},{"id":34450,"name":"Civilization IV\u00ae: Warlords","windows":true,"mac":true,"linux":false},{"id":32470,"name":"Star Wars\u00ae Empire at War\u2122: Gold Pack","windows":true,"mac":false,"linux":false},{"id":46440,"name":"Future Wars","windows":true,"mac":false,"linux":false},{"id":24780,"name":"SimCity\u2122 4 Deluxe Edition","windows":true,"mac":true,"linux":false},{"id":48800,"name":"Ship Simulator Extremes","windows":true,"mac":false,"linux":false},{"id":32500,"name":"STAR WARS\u00ae THE FORCE UNLEASHED II","windows":true,"mac":false,"linux":false},{"id":12220,"name":"Grand Theft Auto: Episodes from Liberty City","windows":true,"mac":false,"linux":false},{"id":72200,"name":"Universe Sandbox","windows":true,"mac":false,"linux":false},{"id":40380,"name":"nail\'d","windows":true,"mac":false,"linux":false},{"id":38720,"name":"RUSH","windows":true,"mac":true,"linux":true},{"id":48950,"name":"Greed Corp","windows":true,"mac":false,"linux":false},{"id":16450,"name":"F.E.A.R. 2: Project Origin","windows":true,"mac":false,"linux":false},{"id":21090,"name":"F.E.A.R.","windows":true,"mac":false,"linux":false},{"id":21110,"name":"F.E.A.R.","windows":true,"mac":false,"linux":false},{"id":21120,"name":"F.E.A.R.","windows":true,"mac":false,"linux":false},{"id":4540,"name":"Titan Quest","windows":true,"mac":false,"linux":false},{"id":42910,"name":"Magicka","windows":true,"mac":false,"linux":false},{"id":99810,"name":"Bulletstorm\u2122","windows":true,"mac":false,"linux":false},{"id":15620,"name":"Warhammer\u00ae 40,000\u2122: Dawn of War\u00ae II","windows":true,"mac":false,"linux":false},{"id":20570,"name":"Warhammer\u00ae 40,000: Dawn of War\u00ae II Chaos Rising","windows":true,"mac":false,"linux":false},{"id":56400,"name":"Warhammer 40,000: Dawn of War II: Retribution","windows":true,"mac":false,"linux":false},{"id":620,"name":"Portal 2","windows":true,"mac":true,"linux":true},{"id":34330,"name":"Total War: SHOGUN 2","windows":true,"mac":true,"linux":false},{"id":55100,"name":"Homefront","windows":true,"mac":false,"linux":false},{"id":8200,"name":"Sam & Max 101: Culture Shock","windows":true,"mac":false,"linux":false},{"id":8210,"name":"Sam & Max 102: Situation: Comedy","windows":true,"mac":false,"linux":false},{"id":8220,"name":"Sam & Max 103: The Mole, the Mob and the Meatball","windows":true,"mac":false,"linux":false},{"id":8230,"name":"Sam & Max 104: Abe Lincoln Must Die!","windows":true,"mac":false,"linux":false},{"id":8240,"name":"Sam & Max 105: Reality 2.0","windows":true,"mac":false,"linux":false},{"id":8250,"name":"Sam & Max 106: Bright Side of the Moon","windows":true,"mac":false,"linux":false},{"id":901663,"name":"Sam & Max: Season Two","windows":true,"mac":true,"linux":false},{"id":8260,"name":"Sam & Max 201: Ice Station Santa","windows":true,"mac":true,"linux":false},{"id":8270,"name":"Sam & Max 202: Moai Better Blues","windows":true,"mac":true,"linux":false},{"id":8280,"name":"Sam & Max 203: Night of the Raving Dead","windows":true,"mac":true,"linux":false},{"id":8290,"name":"Sam & Max 204: Chariots of the Dogs","windows":true,"mac":true,"linux":false},{"id":8300,"name":"Sam & Max 205: What\'s New Beelzebub?","windows":true,"mac":true,"linux":false},{"id":901399,"name":"Sam & Max: The Devil\u2019s Playhouse","windows":true,"mac":true,"linux":false},{"id":31220,"name":"Sam & Max 301: The Penal Zone","windows":true,"mac":true,"linux":false},{"id":31230,"name":"Sam & Max 302: The Tomb of Sammun-Mak","windows":true,"mac":true,"linux":false},{"id":31240,"name":"Sam & Max 303: They Stole Max\'s Brain!","windows":true,"mac":true,"linux":false},{"id":31250,"name":"Sam & Max 304: Beyond the Alley of the Dolls","windows":true,"mac":true,"linux":false},{"id":31260,"name":"Sam & Max 305: The City that Dares not Sleep","windows":true,"mac":true,"linux":false},{"id":104200,"name":"BEEP","windows":true,"mac":false,"linux":false},{"id":105600,"name":"Terraria","windows":true,"mac":false,"linux":false},{"id":50620,"name":"Darksiders\u2122","windows":true,"mac":false,"linux":false},{"id":55150,"name":"Warhammer 40,000: Space Marine","windows":true,"mac":false,"linux":false},{"id":104000,"name":"iBomber Defense","windows":true,"mac":true,"linux":false},{"id":57900,"name":"Duke Nukem Forever","windows":true,"mac":true,"linux":false},{"id":97000,"name":"Solar 2","windows":true,"mac":true,"linux":true},{"id":22230,"name":"Rock of Ages","windows":true,"mac":false,"linux":false},{"id":99300,"name":"Renegade Ops","windows":true,"mac":false,"linux":false},{"id":33460,"name":"From Dust","windows":true,"mac":false,"linux":false},{"id":107200,"name":"Space Pirates and Zombies","windows":true,"mac":true,"linux":true},{"id":200550,"name":"Dungeons - The Dark Lord","windows":true,"mac":false,"linux":false},{"id":98600,"name":"Demolition Inc.","windows":true,"mac":true,"linux":false},{"id":8930,"name":"Sid Meier\'s Civilization\u00ae V","windows":true,"mac":true,"linux":true},{"id":55230,"name":"Saints Row: The Third","windows":true,"mac":false,"linux":false},{"id":102600,"name":"Orcs Must Die!","windows":true,"mac":false,"linux":false},{"id":9200,"name":"RAGE","windows":true,"mac":false,"linux":false},{"id":116120,"name":"Lightfish","windows":true,"mac":true,"linux":false},{"id":110800,"name":"L.A. Noire","windows":true,"mac":false,"linux":false},{"id":24010,"name":"Train Simulator 2015","windows":true,"mac":false,"linux":false},{"id":72850,"name":"The Elder Scrolls V: Skyrim","windows":true,"mac":false,"linux":false},{"id":107800,"name":"Rochard","windows":true,"mac":true,"linux":true},{"id":201290,"name":"Sins of a Solar Empire\u00ae: Trinity","windows":true,"mac":false,"linux":false},{"id":41070,"name":"Serious Sam 3: BFE","windows":true,"mac":true,"linux":true},{"id":57400,"name":"Batman: Arkham City","windows":true,"mac":false,"linux":false},{"id":200260,"name":"Batman: Arkham City - Game of the Year Edition","windows":true,"mac":true,"linux":false},{"id":202200,"name":"Galactic Civilizations\u00ae II: Ultimate Edition","windows":true,"mac":false,"linux":false},{"id":202710,"name":"Demigod","windows":true,"mac":false,"linux":false},{"id":2820,"name":"X3: Terran Conflict","windows":true,"mac":true,"linux":true},{"id":201310,"name":"X3: Albion Prelude","windows":true,"mac":true,"linux":true},{"id":203730,"name":"Q.U.B.E.","windows":true,"mac":true,"linux":false},{"id":239430,"name":"Q.U.B.E: Director\'s Cut","windows":true,"mac":false,"linux":false},{"id":29180,"name":"Osmos","windows":true,"mac":true,"linux":true},{"id":38740,"name":"EDGE","windows":true,"mac":true,"linux":true},{"id":91200,"name":"Anomaly: Warzone Earth","windows":true,"mac":true,"linux":true},{"id":22000,"name":"World of Goo","windows":true,"mac":true,"linux":true},{"id":102500,"name":"Kingdoms of Amalur: Reckoning\u2122","windows":true,"mac":false,"linux":false},{"id":38700,"name":"Toki Tori","windows":true,"mac":true,"linux":true},{"id":67370,"name":"The Darkness II","windows":true,"mac":true,"linux":false},{"id":22380,"name":"Fallout: New Vegas","windows":true,"mac":false,"linux":false},{"id":3830,"name":"Psychonauts","windows":true,"mac":true,"linux":true},{"id":115100,"name":"Costume Quest","windows":true,"mac":true,"linux":true},{"id":115110,"name":"Stacking","windows":true,"mac":true,"linux":true},{"id":102850,"name":"Warp","windows":true,"mac":false,"linux":false},{"id":204880,"name":"Sins of a Solar Empire\u00ae: Rebellion","windows":true,"mac":false,"linux":false},{"id":207610,"name":"The Walking Dead","windows":true,"mac":true,"linux":false},{"id":208140,"name":"Endless Space\u00ae - Emperor Edition","windows":true,"mac":true,"linux":false},{"id":211740,"name":"Thief\u2122 II: The Metal Age","windows":true,"mac":false,"linux":false},{"id":108200,"name":"Ticket to Ride","windows":true,"mac":true,"linux":true},{"id":205910,"name":"Tiny and Big: Grandpa\'s Leftovers","windows":true,"mac":true,"linux":true},{"id":107300,"name":"Breath of Death VII","windows":true,"mac":false,"linux":false},{"id":107310,"name":"Cthulhu Saves the World","windows":true,"mac":false,"linux":false},{"id":213030,"name":"Penny Arcade\'s On the Rain-Slick Precipice of Darkness 3","windows":true,"mac":true,"linux":false},{"id":50300,"name":"Spec Ops: The Line","windows":true,"mac":true,"linux":false},{"id":4500,"name":"S.T.A.L.K.E.R.: Shadow of Chernobyl","windows":true,"mac":false,"linux":false},{"id":20510,"name":"S.T.A.L.K.E.R.: Clear Sky","windows":true,"mac":false,"linux":false},{"id":41700,"name":"S.T.A.L.K.E.R.: Call of Pripyat","windows":true,"mac":false,"linux":false},{"id":105400,"name":"Fable III","windows":true,"mac":false,"linux":false},{"id":204030,"name":"Fable - The Lost Chapters","windows":true,"mac":false,"linux":false},{"id":57690,"name":"Tropico 4: Steam Special Edition","windows":true,"mac":true,"linux":false},{"id":17330,"name":"Crysis Warhead\u00ae","windows":true,"mac":false,"linux":false},{"id":17340,"name":"Crysis Warhead\u00ae","windows":true,"mac":false,"linux":false},{"id":108800,"name":"Crysis 2 - Maximum Edition","windows":true,"mac":false,"linux":false},{"id":115320,"name":"Prototype 2","windows":true,"mac":false,"linux":false},{"id":202170,"name":"Sleeping Dogs","windows":true,"mac":false,"linux":false},{"id":214360,"name":"Tower Wars","windows":true,"mac":true,"linux":false},{"id":234740,"name":"Tower Wars Editor","windows":true,"mac":true,"linux":false},{"id":214700,"name":"Thirty Flights of Loving","windows":true,"mac":true,"linux":false},{"id":730,"name":"Counter-Strike: Global Offensive","windows":true,"mac":true,"linux":true},{"id":208580,"name":"STAR WARS\u00ae: Knights of the Old Republic\u2122 II","windows":true,"mac":false,"linux":false},{"id":200710,"name":"Torchlight II","windows":true,"mac":true,"linux":true},{"id":205100,"name":"Dishonored","windows":true,"mac":false,"linux":false},{"id":200510,"name":"XCOM: Enemy Unknown","windows":true,"mac":true,"linux":true},{"id":218410,"name":"Defender\'s Quest: Valley of the Forgotten","windows":true,"mac":true,"linux":true},{"id":220460,"name":"Cargo Commander","windows":true,"mac":true,"linux":true},{"id":221020,"name":"Towns","windows":true,"mac":true,"linux":true},{"id":208480,"name":"Assassin\u2019s Creed\u00ae III","windows":true,"mac":false,"linux":false},{"id":220240,"name":"Far Cry 3","windows":true,"mac":false,"linux":false},{"id":219740,"name":"Don\'t Starve","windows":true,"mac":true,"linux":true},{"id":220780,"name":"Thomas Was Alone","windows":true,"mac":true,"linux":false},{"id":221260,"name":"Little Inferno","windows":true,"mac":true,"linux":true},{"id":203140,"name":"Hitman: Absolution\u2122","windows":true,"mac":true,"linux":false},{"id":205930,"name":"Hitman: Sniper Challenge","windows":true,"mac":true,"linux":false},{"id":201790,"name":"Orcs Must Die! 2","windows":true,"mac":false,"linux":false},{"id":4560,"name":"Company of Heroes","windows":true,"mac":false,"linux":false},{"id":9340,"name":"Company of Heroes: Opposing Fronts","windows":true,"mac":false,"linux":false},{"id":20540,"name":"Company of Heroes: Tales of Valor","windows":true,"mac":false,"linux":false},{"id":43110,"name":"Metro 2033","windows":true,"mac":false,"linux":false},{"id":55110,"name":"Red Faction\u00ae: Armageddon\u2122","windows":true,"mac":false,"linux":false},{"id":228200,"name":"Company of Heroes (New Steam Version)","windows":true,"mac":false,"linux":false},{"id":214510,"name":"LEGO The Lord of the Rings","windows":true,"mac":false,"linux":false},{"id":4570,"name":"Warhammer\u00ae 40,000: Dawn of War\u00ae - Game of the Year Edition","windows":true,"mac":false,"linux":false},{"id":228280,"name":"Baldur\'s Gate: Enhanced Edition","windows":true,"mac":true,"linux":true},{"id":221810,"name":"The Cave","windows":true,"mac":true,"linux":true},{"id":203160,"name":"Tomb Raider","windows":true,"mac":true,"linux":false},{"id":220440,"name":"DmC: Devil May Cry","windows":true,"mac":false,"linux":false},{"id":227300,"name":"Euro Truck Simulator 2","windows":true,"mac":true,"linux":true},{"id":208520,"name":"Omerta - City of Gangsters","windows":true,"mac":true,"linux":false},{"id":219680,"name":"Proteus","windows":true,"mac":true,"linux":true},{"id":219890,"name":"Antichamber","windows":true,"mac":true,"linux":true},{"id":233740,"name":"Organ Trail: Director\'s Cut","windows":true,"mac":true,"linux":true},{"id":227860,"name":"Castle Story","windows":true,"mac":true,"linux":true},{"id":224500,"name":"Gnomoria","windows":true,"mac":false,"linux":false},{"id":227720,"name":"Under the Ocean","windows":true,"mac":false,"linux":false},{"id":230050,"name":"DLC Quest","windows":true,"mac":true,"linux":false},{"id":233450,"name":"Prison Architect","windows":true,"mac":true,"linux":true},{"id":227160,"name":"Kinetic Void","windows":true,"mac":true,"linux":true},{"id":227680,"name":"StarForge","windows":true,"mac":false,"linux":false},{"id":228260,"name":"Fallen Enchantress: Legendary Heroes","windows":true,"mac":false,"linux":false},{"id":208730,"name":"Game of Thrones","windows":true,"mac":false,"linux":false},{"id":233720,"name":"Surgeon Simulator 2013","windows":true,"mac":true,"linux":true},{"id":204450,"name":"Call of Juarez\u00ae Gunslinger","windows":true,"mac":false,"linux":false},{"id":234710,"name":"Poker Night 2","windows":true,"mac":true,"linux":false},{"id":220200,"name":"Kerbal Space Program","windows":true,"mac":true,"linux":true},{"id":65930,"name":"The Bureau: XCOM Declassified","windows":true,"mac":true,"linux":false},{"id":222730,"name":"Reus","windows":true,"mac":false,"linux":false},{"id":238890,"name":"Skyward Collapse","windows":true,"mac":true,"linux":true},{"id":206190,"name":"Gunpoint","windows":true,"mac":true,"linux":true},{"id":223830,"name":"Xenonauts","windows":true,"mac":false,"linux":false},{"id":241600,"name":"Rogue Legacy","windows":true,"mac":true,"linux":true},{"id":237570,"name":"Penny Arcade\'s On the Rain-Slick Precipice of Darkness 4","windows":true,"mac":false,"linux":false},{"id":242920,"name":"Banished","windows":true,"mac":false,"linux":false},{"id":233250,"name":"Planetary Annihilation","windows":true,"mac":true,"linux":true},{"id":224060,"name":"Deadpool","windows":true,"mac":false,"linux":false},{"id":241410,"name":"CastleStorm","windows":true,"mac":false,"linux":false},{"id":39140,"name":"FINAL FANTASY VII","windows":true,"mac":false,"linux":false},{"id":244850,"name":"Space Engineers","windows":true,"mac":false,"linux":false},{"id":206420,"name":"Saints Row IV","windows":true,"mac":false,"linux":false},{"id":246900,"name":"Viscera Cleanup Detail","windows":true,"mac":false,"linux":false},{"id":255520,"name":"Viscera Cleanup Detail: Shadow Warrior","windows":true,"mac":false,"linux":false},{"id":265210,"name":"Viscera Cleanup Detail: Santa\'s Rampage","windows":true,"mac":false,"linux":false},{"id":246940,"name":"Lords of the Black Sun","windows":true,"mac":false,"linux":false},{"id":247020,"name":"Cook, Serve, Delicious!","windows":true,"mac":true,"linux":true},{"id":214770,"name":"Guacamelee! Gold Edition","windows":true,"mac":true,"linux":true},{"id":239030,"name":"Papers, Please","windows":true,"mac":true,"linux":true},{"id":237630,"name":"DuckTales: Remastered","windows":true,"mac":false,"linux":false},{"id":248390,"name":"Craft The World","windows":true,"mac":true,"linux":false},{"id":218620,"name":"PAYDAY 2","windows":true,"mac":false,"linux":false},{"id":209000,"name":"Batman\u2122: Arkham Origins","windows":true,"mac":false,"linux":false},{"id":239820,"name":"Game Dev Tycoon","windows":true,"mac":true,"linux":true},{"id":2870,"name":"X Rebirth","windows":true,"mac":false,"linux":false},{"id":236850,"name":"Europa Universalis IV","windows":true,"mac":true,"linux":true},{"id":250180,"name":"METAL SLUG 3","windows":true,"mac":false,"linux":false},{"id":237890,"name":"Agarest: Generations of War","windows":true,"mac":false,"linux":false},{"id":251150,"name":"The Legend of Heroes: Trails in the Sky","windows":true,"mac":false,"linux":false},{"id":251570,"name":"7 Days to Die","windows":true,"mac":true,"linux":true},{"id":243450,"name":"Urban Trial Freestyle","windows":true,"mac":false,"linux":false},{"id":242050,"name":"Assassin\u2019s Creed\u00ae IV Black Flag\u2122","windows":true,"mac":false,"linux":false},{"id":250400,"name":"How to Survive","windows":true,"mac":false,"linux":false},{"id":49520,"name":"Borderlands 2","windows":true,"mac":true,"linux":true},{"id":245470,"name":"Democracy 3","windows":true,"mac":true,"linux":true},{"id":246090,"name":"Spacebase DF-9","windows":true,"mac":true,"linux":true},{"id":221910,"name":"The Stanley Parable","windows":true,"mac":true,"linux":false},{"id":261030,"name":"The Walking Dead: Season 2","windows":true,"mac":true,"linux":false},{"id":252150,"name":"Grimm","windows":true,"mac":false,"linux":false},{"id":261760,"name":"Lichdom: Battlemage","windows":true,"mac":false,"linux":false},{"id":105450,"name":"Age of Empires\u00ae III: Complete Collection","windows":true,"mac":false,"linux":false},{"id":221380,"name":"Age of Empires II HD","windows":true,"mac":false,"linux":false},{"id":263760,"name":"Turbo Dismount\u2122","windows":true,"mac":true,"linux":false},{"id":263840,"name":"Out of the Park Baseball 14","windows":true,"mac":true,"linux":true},{"id":265610,"name":"Epic Battle Fantasy 4","windows":true,"mac":false,"linux":false},{"id":265930,"name":"Goat Simulator","windows":true,"mac":true,"linux":true},{"id":266840,"name":"Age of Mythology: Extended Edition","windows":true,"mac":false,"linux":false},{"id":224040,"name":"LocoCycle","windows":true,"mac":false,"linux":false},{"id":270850,"name":"Car Mechanic Simulator 2014","windows":true,"mac":true,"linux":false},{"id":235460,"name":"METAL GEAR RISING: REVENGEANCE","windows":true,"mac":true,"linux":false},{"id":228380,"name":"Next Car Game: Wreckfest","windows":true,"mac":false,"linux":false},{"id":272860,"name":"Next Car Game Sneak Peek 2.0","windows":true,"mac":false,"linux":false},{"id":274190,"name":"Broforce","windows":true,"mac":true,"linux":false},{"id":237870,"name":"Planet Explorers","windows":true,"mac":true,"linux":true},{"id":48700,"name":"Mount & Blade: Warband","windows":true,"mac":true,"linux":true},{"id":287450,"name":"Rise of Nations: Extended Edition","windows":true,"mac":false,"linux":false},{"id":290080,"name":"Life is Feudal: Your Own","windows":true,"mac":false,"linux":false},{"id":33910,"name":"Arma 2","windows":true,"mac":false,"linux":false},{"id":33930,"name":"Arma 2: Operation Arrowhead","windows":true,"mac":false,"linux":false},{"id":65700,"name":"Arma 2: British Armed Forces","windows":true,"mac":false,"linux":false},{"id":65720,"name":"Arma 2: Private Military Company","windows":true,"mac":false,"linux":false},{"id":219540,"name":"Arma 2: Operation Arrowhead Beta (Obsolete)","windows":true,"mac":false,"linux":false},{"id":224580,"name":"Arma II: DayZ Mod","windows":true,"mac":false,"linux":false},{"id":226860,"name":"Galactic Civilizations\u00ae III","windows":true,"mac":false,"linux":false},{"id":201810,"name":"Wolfenstein: The New Order","windows":true,"mac":false,"linux":false},{"id":289130,"name":"Endless Legend\u2122","windows":true,"mac":true,"linux":false},{"id":298630,"name":"The Escapists","windows":true,"mac":false,"linux":false},{"id":238460,"name":"BattleBlock Theater\u00ae","windows":true,"mac":false,"linux":true},{"id":300550,"name":"Shadowrun: Dragonfall - Director\'s Cut","windows":true,"mac":true,"linux":true},{"id":292120,"name":"FINAL FANTASY\u00ae XIII","windows":true,"mac":false,"linux":false},{"id":303800,"name":"The Witcher Adventure Game","windows":true,"mac":true,"linux":false},{"id":243470,"name":"Watch_Dogs\u2122","windows":true,"mac":false,"linux":false},{"id":306660,"name":"Ultimate General: Gettysburg","windows":true,"mac":true,"linux":true},{"id":310080,"name":"Hatoful Boyfriend","windows":true,"mac":true,"linux":true},{"id":240760,"name":"Wasteland 2","windows":true,"mac":true,"linux":true},{"id":259130,"name":"Wasteland 1 - The Original Classic","windows":true,"mac":true,"linux":true},{"id":312990,"name":"The Expendabros","windows":true,"mac":true,"linux":false},{"id":243970,"name":"Invisible, Inc.","windows":true,"mac":true,"linux":false},{"id":65980,"name":"Sid Meier\'s Civilization\u00ae: Beyond Earth\u2122","windows":true,"mac":true,"linux":true},{"id":241930,"name":"Middle-earth\u2122: Shadow of Mordor\u2122","windows":true,"mac":false,"linux":false},{"id":289930,"name":"TransOcean - The Shipping Company","windows":true,"mac":true,"linux":false},{"id":294860,"name":"Valkyria Chronicles\u2122","windows":true,"mac":false,"linux":false},{"id":282070,"name":"This War of Mine","windows":true,"mac":true,"linux":true},{"id":12120,"name":"Grand Theft Auto: San Andreas","windows":true,"mac":false,"linux":false},{"id":12250,"name":"Grand Theft Auto: San Andreas","windows":false,"mac":true,"linux":false},{"id":346010,"name":"Besiege","windows":true,"mac":true,"linux":true},{"id":333950,"name":"Medieval Engineers","windows":true,"mac":false,"linux":false}]';
-$possibleMatches = tryToMatchPurchaseData($purchaseDataJson, $gameDataJson);
-
-//GOG DATA ---------------------------------------------------------------------------------------------------------------
-
-//$gogData = getGOGData();
-//echo json_encode($gogData);
-//[{"id":"1207659038","windows":true,"mac":false,"linux":false,"name":"Alan Wake\'s American Nightmare","purchased_date":"Nov 21, 2012"},{"id":"1207660053","windows":true,"mac":false,"linux":false,"name":"Aqua Kitty: Milk Mine Defender","purchased_date":"Mar 15, 2014"},{"id":"1207658829","windows":true,"mac":false,"linux":false,"name":"Arcanum: Of Steamworks and Magick Obscura","purchased_date":"May 14, 2014"},{"id":"1207659156","windows":true,"mac":true,"linux":false,"name":"Avernum: The Complete Saga","purchased_date":"Mar 15, 2014"},{"id":"1207659097","windows":true,"mac":false,"linux":false,"name":"Back to the Future: The Game","purchased_date":"Mar 15, 2013"},{"id":"1207659086","windows":true,"mac":false,"linux":false,"name":"Ball, The","purchased_date":"Nov 21, 2012"},{"id":"1207660124","windows":true,"mac":true,"linux":true,"name":"Battle Worlds: Kronos","purchased_date":"May 12, 2014"},{"id":"1207658695","windows":true,"mac":true,"linux":false,"name":"Beneath a Steel Sky","purchased_date":"Oct 14, 2011"},{"id":"1207658746","windows":true,"mac":false,"linux":false,"name":"Beyond Good & Evil\u2122","purchased_date":"Nov 14, 2013"},{"id":"1207658856","windows":true,"mac":false,"linux":false,"name":"Blood: One Unit Whole Blood","purchased_date":"Oct 14, 2011"},{"id":"1207662943","windows":true,"mac":true,"linux":true,"name":"Broken Age Season Pass","purchased_date":"May 12, 2014"},{"id":"1207659253","windows":true,"mac":true,"linux":true,"name":"Brutal Legend","purchased_date":"Nov 13, 2013"},{"id":"1207658838","windows":true,"mac":false,"linux":false,"name":"Call to Power 2","purchased_date":"Jan 20, 2014"},{"id":"1207659070","windows":true,"mac":false,"linux":false,"name":"Chronicles of Riddick: Assault on Dark Athena, The","purchased_date":"Oct 26, 2012"},{"id":"1207664203","windows":true,"mac":false,"linux":false,"name":"Consortium: Master Edition, The","purchased_date":"Jun 17, 2014"},{"id":"1207658982","windows":true,"mac":true,"linux":false,"name":"Crusader: No Regret\u2122","purchased_date":"Nov 2, 2012"},{"id":"1207658933","windows":true,"mac":true,"linux":false,"name":"Crusader: No Remorse\u2122","purchased_date":"Oct 19, 2012"},{"id":"1207659103","windows":true,"mac":true,"linux":true,"name":"Deponia","purchased_date":"Mar 15, 2013"},{"id":"1207659263","windows":true,"mac":false,"linux":false,"name":"Divinity: Dragon Commander","purchased_date":"May 14, 2014"},{"id":"1207658927","windows":true,"mac":true,"linux":true,"name":"Dragonsphere","purchased_date":"Oct 14, 2011"},{"id":"1207658730","windows":true,"mac":true,"linux":true,"name":"Duke Nukem 3D Atomic Edition","purchased_date":"Mar 15, 2014"},{"id":"1207658959","windows":true,"mac":false,"linux":false,"name":"Dungeon Keeper\u2122 2","purchased_date":"Jun 18, 2014"},{"id":"1207658934","windows":true,"mac":true,"linux":false,"name":"Dungeon Keeper Gold\u2122","purchased_date":"Jun 18, 2014"},{"id":"1207659194","windows":true,"mac":false,"linux":false,"name":"Eador. Masters of the Broken World","purchased_date":"Nov 14, 2013"},{"id":"1207658844","windows":true,"mac":false,"linux":false,"name":"Empire Earth 2 Gold Edition","purchased_date":"Mar 10, 2014"},{"id":"1207658859","windows":true,"mac":false,"linux":false,"name":"Empire Earth 3","purchased_date":"Mar 10, 2014"},{"id":"1207658777","windows":true,"mac":false,"linux":false,"name":"Empire Earth Gold Edition","purchased_date":"Mar 10, 2014"},{"id":"1207658775","windows":true,"mac":true,"linux":false,"name":"Evil Genius","purchased_date":"Mar 10, 2014"},{"id":"1207659200","windows":true,"mac":true,"linux":false,"name":"Evoland","purchased_date":"Nov 13, 2013"},{"id":"1207664153","windows":true,"mac":true,"linux":false,"name":"FRACT OSC","purchased_date":"Jun 17, 2014"},{"id":"1207659102","windows":true,"mac":true,"linux":true,"name":"FTL: Advanced Edition","purchased_date":"Jun 18, 2013"},{"id":"1207659067","windows":true,"mac":true,"linux":false,"name":"Geneforge Saga","purchased_date":"Mar 14, 2014"},{"id":"1207659843","windows":true,"mac":false,"linux":false,"name":"Giana Sisters: Rise of the Owlverlord","purchased_date":"Mar 14, 2014"},{"id":"1207666533","windows":true,"mac":true,"linux":true,"name":"Halfway","purchased_date":"Mar 6, 2015"},{"id":"1207659118","windows":true,"mac":true,"linux":true,"name":"Hotline Miami","purchased_date":"Jun 21, 2013"},{"id":"1207659593","windows":true,"mac":true,"linux":false,"name":"I Have No Mouth And I Must Scream","purchased_date":"Mar 15, 2014"},{"id":"1207660673","windows":true,"mac":true,"linux":false,"name":"Jazzpunk","purchased_date":"Jun 18, 2014"},{"id":"1207658779","windows":true,"mac":false,"linux":false,"name":"Judge Dredd: Dredd vs Death","purchased_date":"Mar 10, 2014"},{"id":"1207659096","windows":true,"mac":false,"linux":false,"name":"King of Dragon Pass","purchased_date":"Nov 18, 2013"},{"id":"1207659154","windows":true,"mac":false,"linux":false,"name":"King\'s Bounty: Crossworlds GOTY","purchased_date":"Mar 15, 2013"},{"id":"1207659933","windows":true,"mac":true,"linux":true,"name":"Long Live the Queen","purchased_date":"May 16, 2014"},{"id":"1207659128","windows":true,"mac":false,"linux":false,"name":"Lucius","purchased_date":"Mar 15, 2013"},{"id":"1207658694","windows":true,"mac":true,"linux":false,"name":"Lure of the Temptress","purchased_date":"Oct 14, 2011"},{"id":"1207658935","windows":true,"mac":true,"linux":false,"name":"Magic Carpet Plus\u2122","purchased_date":"Nov 2, 2012"},{"id":"1207659236","windows":true,"mac":false,"linux":false,"name":"Magrunner: Dark Pulse","purchased_date":"Mar 14, 2014"},{"id":"1207666893","windows":true,"mac":false,"linux":false,"name":"Mount & Blade","purchased_date":"Nov 12, 2014"},{"id":"1207659162","windows":true,"mac":false,"linux":false,"name":"Neverwinter Nights 2 Complete","purchased_date":"Jun 21, 2013"},{"id":"1207660553","windows":true,"mac":true,"linux":true,"name":"Octodad: Dadliest Catch","purchased_date":"Jun 18, 2014"},{"id":"1207659255","windows":true,"mac":true,"linux":false,"name":"Penumbra Collection, The","purchased_date":"Mar 15, 2014"},{"id":"1207659046","windows":true,"mac":false,"linux":false,"name":"Pharaoh + Cleopatra","purchased_date":"Jan 20, 2014"},{"id":"1207660104","windows":true,"mac":true,"linux":true,"name":"PixelJunk Shooter","purchased_date":"May 16, 2014"},{"id":"1207659122","windows":true,"mac":true,"linux":false,"name":"Puddle","purchased_date":"Mar 15, 2013"},{"id":"1207660613","windows":true,"mac":false,"linux":false,"name":"Red Faction 2","purchased_date":"Jun 13, 2014"},{"id":"1207659049","windows":true,"mac":true,"linux":false,"name":"Retro City Rampage DX","purchased_date":"Jun 13, 2014"},{"id":"1207659244","windows":true,"mac":false,"linux":false,"name":"Rise of the Triad (2013)","purchased_date":"Nov 14, 2013"},{"id":"1207663153","windows":true,"mac":false,"linux":false,"name":"Risen","purchased_date":"Jun 18, 2014"},{"id":"1207663193","windows":true,"mac":false,"linux":false,"name":"Risen 2: Dark Waters","purchased_date":"Jun 18, 2014"},{"id":"1207658945","windows":true,"mac":false,"linux":false,"name":"RollerCoaster Tycoon: Deluxe","purchased_date":"Jun 18, 2014"},{"id":"1207659058","windows":true,"mac":false,"linux":false,"name":"S2: Silent Storm Gold Edition","purchased_date":"May 12, 2014"},{"id":"1207660413","windows":true,"mac":true,"linux":true,"name":"Shadowrun Returns","purchased_date":"May 13, 2014"},{"id":"1207658936","windows":true,"mac":true,"linux":false,"name":"Sid Meier\'s Alpha Centauri\u2122 Planetary Pack","purchased_date":"Nov 2, 2012"},{"id":"1207658969","windows":true,"mac":true,"linux":false,"name":"SimCity\u2122 2000 Special Edition","purchased_date":"Jun 18, 2014"},{"id":"1207664303","windows":true,"mac":true,"linux":true,"name":"Sir, You Are Being Hunted","purchased_date":"Jun 17, 2014"},{"id":"1207659873","windows":true,"mac":true,"linux":false,"name":"Smugglers V","purchased_date":"Mar 14, 2014"},{"id":"1207659018","windows":true,"mac":true,"linux":true,"name":"Spacechem","purchased_date":"Nov 21, 2012"},{"id":"1207658719","windows":true,"mac":false,"linux":false,"name":"Spellforce Platinum","purchased_date":"Nov 13, 2013"},{"id":"1207666403","windows":true,"mac":false,"linux":false,"name":"STAR WARS\u00ae: TIE Fighter (1994)","purchased_date":"Mar 4, 2015"},{"id":"1207666413","windows":true,"mac":false,"linux":false,"name":"STAR WARS\u00ae: TIE Fighter (1998)","purchased_date":"Mar 4, 2015"},{"id":"1207659100","windows":true,"mac":false,"linux":false,"name":"Startopia","purchased_date":"Nov 15, 2013"},{"id":"1207659007","windows":true,"mac":false,"linux":false,"name":"Still Life 2","purchased_date":"Jun 24, 2014"},{"id":"1207659161","windows":true,"mac":true,"linux":false,"name":"Strike Suit Zero","purchased_date":"Jun 21, 2013"},{"id":"1207658713","windows":true,"mac":true,"linux":false,"name":"Stronghold Crusader HD","purchased_date":"Mar 10, 2014"},{"id":"1207659079","windows":true,"mac":false,"linux":false,"name":"Symphony","purchased_date":"Nov 21, 2012"},{"id":"1207659172","windows":true,"mac":true,"linux":false,"name":"System Shock\u2122 2","purchased_date":"Nov 15, 2013"},{"id":"1207659523","windows":true,"mac":false,"linux":false,"name":"Tales From Space: Mutant Blobs Attack","purchased_date":"Mar 14, 2014"},{"id":"1207658753","windows":true,"mac":true,"linux":false,"name":"Teenagent","purchased_date":"Oct 14, 2011"},{"id":"1207659026","windows":true,"mac":true,"linux":false,"name":"Theme Hospital","purchased_date":"Oct 19, 2012"},{"id":"1207658901","windows":true,"mac":true,"linux":false,"name":"Tyrian 2000","purchased_date":"Oct 14, 2011"},{"id":"1207659087","windows":true,"mac":false,"linux":false,"name":"Unmechanical","purchased_date":"Nov 21, 2012"},{"id":"1207658677","windows":true,"mac":false,"linux":false,"name":"Unreal 2: The Awakening Special Edition","purchased_date":"Jun 18, 2014"},{"id":"1207658679","windows":true,"mac":false,"linux":false,"name":"Unreal Gold","purchased_date":"Jun 18, 2014"},{"id":"1207658691","windows":true,"mac":false,"linux":false,"name":"Unreal Tournament 2004 Editor\'s Choice Edition","purchased_date":"Jun 18, 2014"},{"id":"1207658692","windows":true,"mac":false,"linux":false,"name":"Unreal Tournament GOTY","purchased_date":"Jun 18, 2014"},{"id":"1207659171","windows":true,"mac":false,"linux":false,"name":"Zafehouse: Diaries","purchased_date":"Jun 17, 2014"},{"id":"1207659039","windows":true,"mac":false,"linux":false,"name":"Zeus + Poseidon (Acropolis)","purchased_date":"Jan 20, 2014"},{"id":"1207660104","windows":true,"mac":true,"linux":true,"name":"PixelJunk Shooter","purchased_date":"May 16, 2014"},{"id":"1207659122","windows":true,"mac":true,"linux":false,"name":"Puddle","purchased_date":"Mar 15, 2013"},{"id":"1207660613","windows":true,"mac":false,"linux":false,"name":"Red Faction 2","purchased_date":"Jun 13, 2014"},{"id":"1207659049","windows":true,"mac":true,"linux":false,"name":"Retro City Rampage DX","purchased_date":"Jun 13, 2014"},{"id":"1207659244","windows":true,"mac":false,"linux":false,"name":"Rise of the Triad (2013)","purchased_date":"Nov 14, 2013"},{"id":"1207663153","windows":true,"mac":false,"linux":false,"name":"Risen","purchased_date":"Jun 18, 2014"},{"id":"1207663193","windows":true,"mac":false,"linux":false,"name":"Risen 2: Dark Waters","purchased_date":"Jun 18, 2014"},{"id":"1207658945","windows":true,"mac":false,"linux":false,"name":"RollerCoaster Tycoon: Deluxe","purchased_date":"Jun 18, 2014"},{"id":"1207659058","windows":true,"mac":false,"linux":false,"name":"S2: Silent Storm Gold Edition","purchased_date":"May 12, 2014"},{"id":"1207660413","windows":true,"mac":true,"linux":true,"name":"Shadowrun Returns","purchased_date":"May 13, 2014"},{"id":"1207658936","windows":true,"mac":true,"linux":false,"name":"Sid Meier\'s Alpha Centauri\u2122 Planetary Pack","purchased_date":"Nov 2, 2012"},{"id":"1207658969","windows":true,"mac":true,"linux":false,"name":"SimCity\u2122 2000 Special Edition","purchased_date":"Jun 18, 2014"},{"id":"1207664303","windows":true,"mac":true,"linux":true,"name":"Sir, You Are Being Hunted","purchased_date":"Jun 17, 2014"},{"id":"1207659873","windows":true,"mac":true,"linux":false,"name":"Smugglers V","purchased_date":"Mar 14, 2014"},{"id":"1207659018","windows":true,"mac":true,"linux":true,"name":"Spacechem","purchased_date":"Nov 21, 2012"},{"id":"1207658719","windows":true,"mac":false,"linux":false,"name":"Spellforce Platinum","purchased_date":"Nov 13, 2013"},{"id":"1207666403","windows":true,"mac":false,"linux":false,"name":"STAR WARS\u00ae: TIE Fighter (1994)","purchased_date":"Mar 4, 2015"},{"id":"1207666413","windows":true,"mac":false,"linux":false,"name":"STAR WARS\u00ae: TIE Fighter (1998)","purchased_date":"Mar 4, 2015"},{"id":"1207659100","windows":true,"mac":false,"linux":false,"name":"Startopia","purchased_date":"Nov 15, 2013"},{"id":"1207659007","windows":true,"mac":false,"linux":false,"name":"Still Life 2","purchased_date":"Jun 24, 2014"},{"id":"1207659161","windows":true,"mac":true,"linux":false,"name":"Strike Suit Zero","purchased_date":"Jun 21, 2013"},{"id":"1207658713","windows":true,"mac":true,"linux":false,"name":"Stronghold Crusader HD","purchased_date":"Mar 10, 2014"},{"id":"1207659079","windows":true,"mac":false,"linux":false,"name":"Symphony","purchased_date":"Nov 21, 2012"},{"id":"1207659172","windows":true,"mac":true,"linux":false,"name":"System Shock\u2122 2","purchased_date":"Nov 15, 2013"},{"id":"1207659523","windows":true,"mac":false,"linux":false,"name":"Tales From Space: Mutant Blobs Attack","purchased_date":"Mar 14, 2014"},{"id":"1207658753","windows":true,"mac":true,"linux":false,"name":"Teenagent","purchased_date":"Oct 14, 2011"},{"id":"1207659026","windows":true,"mac":true,"linux":false,"name":"Theme Hospital","purchased_date":"Oct 19, 2012"},{"id":"1207658901","windows":true,"mac":true,"linux":false,"name":"Tyrian 2000","purchased_date":"Oct 14, 2011"},{"id":"1207659087","windows":true,"mac":false,"linux":false,"name":"Unmechanical","purchased_date":"Nov 21, 2012"},{"id":"1207658677","windows":true,"mac":false,"linux":false,"name":"Unreal 2: The Awakening Special Edition","purchased_date":"Jun 18, 2014"},{"id":"1207658679","windows":true,"mac":false,"linux":false,"name":"Unreal Gold","purchased_date":"Jun 18, 2014"},{"id":"1207658691","windows":true,"mac":false,"linux":false,"name":"Unreal Tournament 2004 Editor\'s Choice Edition","purchased_date":"Jun 18, 2014"},{"id":"1207658692","windows":true,"mac":false,"linux":false,"name":"Unreal Tournament GOTY","purchased_date":"Jun 18, 2014"},{"id":"1207659171","windows":true,"mac":false,"linux":false,"name":"Zafehouse: Diaries","purchased_date":"Jun 17, 2014"},{"id":"1207659039","windows":true,"mac":false,"linux":false,"name":"Zeus + Poseidon (Acropolis)","purchased_date":"Jan 20, 2014"}]
+//$possibleMatches = tryToMatchPurchaseData($purchaseDataJson, $gameDataJson);
+$possibleMatches = array();
+$secondPassMatches = tryToMatchUnmatchedData($purchaseDataJson, $gameDataJson, $unmatchedList);
 
 //STEAM DATA ---------------------------------------------------------------------------------------------------------------
 
@@ -305,33 +133,6 @@ $possibleMatches = tryToMatchPurchaseData($purchaseDataJson, $gameDataJson);
 
 //NOT MATCHED
 //["Grand Theft Auto V Pre-Purchase (Tier 1)","FINAL FANTASY XIII (NE), Hatoful Boyfriend, This War of Mine","Next Car Game: Wreckfest, Endless Legend - Classic Pack, Shadowrun: Dragonfall - Director\'s Cut, The Witcher Adventure Game","Age of Mythology EX, LocoCycle, Rise of Nations: Extended Edition","Ship Simulator Extremes, Lords of the Black Sun, Metal Gear Rising","Starwars Battlefront II, Starwars Republic Commando, Star Wars: KOTOR, Star Wars: Empire at War Gold, Star Wars: The Force Unleashed II, Star Wars: Knights of the Old Republic II","Assassin\'s Creed Black Flag Digital Standard Edition","Age of Empires Legacy Bundle Including The Forgotten","Orcs Must Die 2 - Complete Pack - 2 Pack, Fallen Enchantress: Legendary Heroes","Oblivion Game of the Year Deluxe, Morrowind Game of the Year","Prison Architect Standard, StarForge, Final Fantasy VII","The Orange Box, Supreme Commander 2, Demigod, Warp","Gnomoria, Kerbal Space Program, Penny Arcade\'s On the Rain-Slick Precipice of Darkness 4","Serious Sam 3 BFE, Sins of a Solar Empire®: Rebellion, Ticket to Ride","Total War: Shogun 2, Homefront (ROW), The Walking Dead","Qube","Legendary, Command and Conquer: Red Alert 3, Command and Conquer: Red Alert 3 - Uprising, Command and Conquer: Tiberium Wars, Command and Conquer: Kane\'s Wrath","Tropico 4 Bundle","S.T.A.L.K.E.R. Bundle","Deus Ex: Human Revolution - Standard Edition","Double Fine Bundle","L.A. Noire Complete Edition","Warhammer 40,000: Dawn of War II - Complete Pack","Railworks 3: TS2012","Skyrim","Far Cry 2","Crysis Maximum Edition Bundle","Sid Meier\'s Civilization IV: The Complete Edition","Skyrim - Dawnguard","Skyrim Hearthfire","Thief II","Prototype, Prototype 2","RAGE, XCOM Enemy Unknown (ROW)","THQ Humble Bundle Core - Nov 2012","Humble Indie Bundle for Android","Sam and Max: Seasons 1-3","FEAR Complete Pack (NA)","Humble Indie Bundle for Android Bonus","Batman: Arkham Asylum GOTY","Civ V Gods and Kings Expansion","The Elder Scrolls V: Skyrim - Dragonborn","Hitman Absolution Professional, Reus","Grand Theft Auto IV (US/AU), The Sims 3","Dawn of War Retail","Rush","Team Fortress 2","Galactic Civilizations® II","Cargo Commander, Papers, Please","Assassin\'s Creed 3 Standard Edition","Sid Meier\'s Civilization V: Brave New World","GTA IV Complete Bundle","Sleeping Dogs, Rogue Legacy","Grimm Complete Pack","Redshirt","Metal Slug 3 Steam Store and Retail Key","Urban Trials","Silent Hunter 5: Gold Edition, Future Wars","Wallet $5.00 Credit","Planetary Annihilation, Car Mechanic Simulator","Star Wars - The Force Unleashed","Arma 2: Complete Collection","XCOM: Enemy Within","X3 Terran War - X3TC and X3AP Bundle","Lucasarts Adventure Bundle, Organ Trail: Director\'s Cut","Xenonauts, Europa Universalis IV Extreme Edition"]
-
-//HUMBLE DATA ---------------------------------------------------------------------------------------------------------------
-//NOTE: (only front-end solution available for humble bundle, NOT SURE ABOUT humble store)
-
-/*
-var gameData = {"windows": Array(), "mac": Array(), "linux": Array()};
-jQuery(".js-all-downloads-holder .row").each(function(idx, row){
-	var $row = jQuery(row);
-	var name = $row.data("human-name");
-	var hasLinuxDownloads = $row.children(".js-platform.downloads.linux").children(".download-buttons").html(),
-		hasMacDownloads = $row.children(".js-platform.downloads.mac").children(".download-buttons").html(),
-		hasWindowsDownloads = $row.children(".js-platform.downloads.windows").children(".download-buttons").html();
-	if(hasLinuxDownloads.trim() != ""){
-		gameData.linux.push(name);
-	}
-	if(hasMacDownloads.trim() != ""){
-		gameData.mac.push(name);
-	}
-	if(hasWindowsDownloads.trim() != ""){
-		gameData.windows.push(name);
-	}	
-});
-console.log(JSON.stringify(gameData));
-*/
-
-//Slightly different format...
-//{"windows":["Anomaly Warzone Earth","Aquaria","Battle Frogs","City Generator Tech Demo","Cook, Serve, Delicious!","Crayon Physics Deluxe","DEFCON","Darwinia","Dungeons of Dredmor","EDGE","Endless Nuclear Kittens","Low Light Combat","Multiwinia","Nuclear Pizza War","Osmos","Out of the Park Baseball 14","Space Hunk","Tektonik","Toki Tori","Universe Sandbox","Uplink","Voxel Tech Demo",3918,"Wasteland Kings","World Of Goo"],"mac":["Anomaly Warzone Earth","Aquaria","Battle Frogs","Cook, Serve, Delicious!","Crayon Physics Deluxe","DEFCON","Darwinia","Dungeons of Dredmor","EDGE","Endless Nuclear Kittens","Low Light Combat","Multiwinia","Nuclear Pizza War","Osmos","Out of the Park Baseball 14","Space Hunk","Tektonik","Toki Tori","Uplink","World Of Goo"],"linux":["Anomaly Warzone Earth","Aquaria","Battle Frogs","Cook, Serve, Delicious!","Crayon Physics Deluxe","DEFCON","Darwinia","Dungeons of Dredmor","EDGE","Endless Nuclear Kittens","Low Light Combat","Multiwinia","Nuclear Pizza War","Osmos","Out of the Park Baseball 14","Toki Tori","Uplink","World Of Goo"]}
 
 ?>
 <!DOCTYPE html>
@@ -412,6 +213,17 @@ console.log(JSON.stringify(gameData));
 				<div class="col-md-2"></div>
 			</div>
 			<!-- /ko -->
+			
+			<!-- ko foreach: secondPassMatches -->
+			<div class="row">
+				<div class="col-md-2"></div>
+				<div class="col-md-4 needle" data-bind="click: $root.hideMe, text: $data.needleString"></div>
+				<div class="col-md-4 matches" data-bind="foreach: $data.matches">
+					<div data-bind="text: $data, click: function(viewModel, event){ $root.flagMatch(viewModel, event, $parent) }"></div>
+				</div>
+				<div class="col-md-2"></div>
+			</div>
+			<!-- /ko -->
 
 		  </div>
 
@@ -431,6 +243,7 @@ console.log(JSON.stringify(gameData));
 		<script type="text/javascript">
 <?php
 	echo "var possibleMatches = '" . str_replace('\'', '\\\'', json_encode($possibleMatches)) . "';";
+	echo "var secondPassMatches = '" . str_replace('\'', '\\\'', json_encode($secondPassMatches)) . "';";
 ?>
 
 			var viewModel = undefined;
@@ -443,10 +256,13 @@ console.log(JSON.stringify(gameData));
 				self.confirmedMatches = ko.observableArray();
 				self.failedMatches = ko.observableArray();
 				self.matchList = ko.observableArray();
+				self.secondPassMatches = ko.observableArray();
 				
 				this.flagMatch = function(matchString, event, parent){
+					console.log(arguments);
 					confirmedMatch = {
 						purchaseName: parent.needleString,
+						parentString: parent.parentString || undefined,
 						gameName: matchString
 					};
 					self.confirmedMatches.push(confirmedMatch);
@@ -463,7 +279,7 @@ console.log(JSON.stringify(gameData));
 				this.generatePHPFriendlyOutput = function(){
 					var output = {};
 					$.each(self.confirmedMatches(),function(idx, elem){
-						output[elem.gameName] = elem.purchaseName;
+						output[elem.gameName] = elem.parentString || elem.purchaseName;
 					});
 					console.log(JSON.stringify(output));
 					console.log(JSON.stringify(self.failedMatches()));
@@ -476,6 +292,7 @@ console.log(JSON.stringify(gameData));
 				ko.applyBindings(viewModel);
 				
 				var matchesJson = JSON.parse(possibleMatches);
+				var secondPassMatchesJson = JSON.parse(secondPassMatches);
 				var matchArray = Array();
 				
 				$.each(matchesJson, function(idx, elem){
@@ -488,6 +305,19 @@ console.log(JSON.stringify(gameData));
 				});
 				console.log(matchArray);
 				viewModel.matchList(matchArray);
+				
+				matchArray = Array();
+				$.each(secondPassMatchesJson, function(idx, elem){
+					var matchObj = {};
+					
+					matchObj.needleString = idx;
+					matchObj.matches = elem["matches"];
+					matchObj.parentString = elem["parentString"];
+					
+					matchArray.push(matchObj);
+				});
+				console.log(matchArray);
+				viewModel.secondPassMatches(matchArray);
 				
 			});
 		</script>

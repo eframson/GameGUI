@@ -465,6 +465,9 @@ var Games = function() {
 
 					self.currentGame(game);
 					self.showModal("editgame");
+					$(".datepicker").datepicker({
+						format: 'yyyy-mm-dd 00:00:00', //I guess we don't care about times right now, do we?
+					});
 
 				}
 			},
@@ -640,21 +643,34 @@ var Games = function() {
 					var doesMatch = true;
 
 					for(i = 0; i < termObjects.and.length; i++){
+						var matchNull = false;
 						var matchTerm = termObjects.and[i].value;
 						var matchField = termObjects.and[i].field;
+						
+						if(matchTerm == 'NULL'){
+							matchNull = true;
+						}
 
 						if( matchField == 'ANY' ){
 
 							var loopMatch = false;
 
 							for(prop in gameArray){
+								
 					        	if(prop == "id" || prop == "selected"){
 					        		continue;
 					        	}
 
-					        	if( (gameArray[prop] || "").match( new RegExp(matchTerm, "i")) !== null ){
-									loopMatch = true;
-									break;
+								if(matchNull){
+									if(gameArray[prop] == null){
+										loopMatch = true;
+										break;
+									}
+					        	}else{
+						        	if( (gameArray[prop] || "").match( new RegExp(matchTerm, "i")) !== null ){
+										loopMatch = true;
+										break;
+									}
 								}
 					        }
 
@@ -664,9 +680,18 @@ var Games = function() {
 					        }
 
 						}else{
-							if( (gameArray[matchField] || "").match( new RegExp(matchTerm, "i")) === null ){
-								doesMatch = false;
-								break;
+							
+							//If one of our "and" stipulations doesn't match, abort the whole thing because we need all "and" fields to match
+							if(matchNull){
+								if(gameArray[matchField] != null){
+									doesMatch = false;
+									break;
+								}
+							}else{
+								if( (gameArray[matchField] || "").match( new RegExp(matchTerm, "i")) === null ){
+									doesMatch = false;
+									break;
+								}
 							}
 						}
 					}
@@ -685,8 +710,13 @@ var Games = function() {
 					var doesMatch = false;
 
 					for(i = 0; i < termObjects.or.length; i++){
+						var matchNull = false;
 						var matchTerm = termObjects.or[i].value;
 						var matchField = termObjects.or[i].field;
+						
+						if(matchTerm == 'NULL'){
+							matchNull = true;
+						}
 
 						if( matchField == 'ANY' ){
 							var loopMatch = false;
@@ -696,9 +726,16 @@ var Games = function() {
 					        		continue;
 					        	}
 
-					        	if( (gameArray[prop] || "").match( new RegExp(matchTerm, "i")) ){
-									loopMatch = true;
-									break;
+					        	if(matchNull){
+					        		if(gameArray[prop] == null){
+										loopMatch = true;
+										break;
+									}
+					        	}else{
+					        		if( (gameArray[prop] || "").match( new RegExp(matchTerm, "i")) ){
+										loopMatch = true;
+										break;
+									}
 								}
 					        }
 
@@ -708,9 +745,16 @@ var Games = function() {
 					        }
 
 						}else{
-							if( (gameArray[matchField] || "").match( new RegExp(matchTerm, "i")) ){
-								doesMatch = true;
-								break;
+							if(matchNull){
+								if(gameArray[matchField] == null){
+									doesMatch = true;
+									break;
+								}
+					       	}else{
+					        	if( (gameArray[matchField] || "").match( new RegExp(matchTerm, "i")) ){
+									doesMatch = true;
+									break;
+								}
 							}
 						}
 

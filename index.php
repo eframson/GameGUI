@@ -19,6 +19,9 @@
 		<link href="css/jquery-ui.min.css" rel="stylesheet">
 		<!--<link href="css/jquery-ui.structure.min.css" rel="stylesheet">-->
 		<!--<link href="css/jquery-ui.theme.min.css" rel="stylesheet">-->
+		
+		<!-- Bootstrap Datepicker -->
+		<link href="css/bootstrap-datepicker.min.css" rel="stylesheet">
 				
 		<!-- Theme customizations -->
 		<link href="css/custom.css" rel="stylesheet">
@@ -41,6 +44,7 @@
 		- Make mass update and create game modals submit by default when enter key is pressed like update does currently
 		- Break out filtering logic into subfunction maybe?
 		- Add ability to merge games
+		- Re-apply filter on update?
 	-->
 	<body>
 		<div class="navbar navbar-inverse navbar-fixed-top" role="navigation">
@@ -150,6 +154,11 @@
 						<div class="form-group">
 							<label for="platform">Platform</label>
 							<input type="text" class="form-control" id="edit_platform" placeholder="Platform" data-bind="value: platform, event: { keyup: $root.updateGameOnEnter }">
+							<div class="clear"></div>
+						</div>
+						<div class="form-group">
+							<label for="platform">Purchased Date</label>
+							<input type="text" class="form-control datepicker" id="edit_purchasedate" placeholder="Purchase Date" data-bind="value: date_created, event: { keyup: $root.updateGameOnEnter }">
 							<div class="clear"></div>
 						</div>
 					</form>
@@ -262,6 +271,7 @@
 		<script src="js/knockout.mapping-latest.js"></script>
 		<!--<script src="js/typeahead-0.10.5.js"></script>-->
 		<script src="js/jquery-ui.min.js"></script>
+		<script src="js/bootstrap-datepicker.min.js"></script>
 
 		<!-- Other jQuery Plugins/Libraries -->
 
