@@ -17,7 +17,8 @@ var Games = function() {
 		self.allSelected = ko.observable(0);
 		self.massUpdateData = ko.observable({
 			platform: undefined,
-			source: undefined
+			source: undefined,
+			date_created: undefined,
 		});
 		self.pageSize = ko.observable(25);
 		self.currentPageNo = ko.observable(1);
@@ -465,10 +466,6 @@ var Games = function() {
 
 					self.currentGame(game);
 					self.showModal("editgame");
-					$(".datepicker").datepicker({
-						format: 'yyyy-mm-dd 00:00:00', //I guess we don't care about times right now, do we?
-					});
-
 				}
 			},
 			error: self.standardOnFailureHandler
@@ -521,6 +518,9 @@ var Games = function() {
 		self.modalIsShown = true;
 		$('#myModal .modal-content.' + whichContent).show();
 		$('#myModal').modal('show');
+		/*$(".datepicker").datepicker({
+			format: 'yyyy-mm-dd 00:00:00', //I guess we don't care about times right now, do we?
+		});*/
 	}
 
 	this.hideModal = function(viewModel, event){

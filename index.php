@@ -45,6 +45,10 @@
 		- Break out filtering logic into subfunction maybe?
 		- Add ability to merge games
 		- Re-apply filter on update?
+		- Hide modal window when another is triggered
+		- Re-applying filter fucks up ordering?
+		- Can't deselect games that aren't in the current filter page
+		- Crysis/F.E.A.R games missing/missing data?
 	-->
 	<body>
 		<div class="navbar navbar-inverse navbar-fixed-top" role="navigation">
@@ -77,12 +81,17 @@
 					<form role="form-horizontal" data-bind="with: massUpdateData">
 						<div class="form-group">
 							<label for="source">Source</label>
-							<input type="text" class="form-control" id="edit_source" placeholder="Source" data-bind="value: source, event: { keyup: $root.massUpdateOnEnter }">
+							<input type="text" class="form-control" placeholder="Source" data-bind="value: source, event: { keyup: $root.massUpdateOnEnter }">
 							<div class="clear"></div>
 						</div>
 						<div class="form-group">
 							<label for="platform">Platform</label>
-							<input type="text" class="form-control" id="edit_platform" placeholder="Platform" data-bind="value: platform, event: { keyup: $root.massUpdateOnEnter }">
+							<input type="text" class="form-control" placeholder="Platform" data-bind="value: platform, event: { keyup: $root.massUpdateOnEnter }">
+							<div class="clear"></div>
+						</div>
+						<div class="form-group">
+							<label for="platform">Purchased Date</label>
+							<input type="text" class="form-control datepicker" placeholder="Purchase Date" data-bind="value: date_created, event: { keyup: $root.updateGameOnEnter }">
 							<div class="clear"></div>
 						</div>
 						<div class="form-group">
@@ -143,22 +152,22 @@
 						</div>
 						<div class="form-group">
 							<label for="title">Title</label>
-							<input type="text" class="form-control" id="edit_title" placeholder="Title" data-bind="value: title, event: { keyup: $root.updateGameOnEnter }">
+							<input type="text" class="form-control" placeholder="Title" data-bind="value: title, event: { keyup: $root.updateGameOnEnter }">
 							<div class="clear"></div>
 						</div>
 						<div class="form-group">
 							<label for="source">Source</label>
-							<input type="text" class="form-control" id="edit_source" placeholder="Source" data-bind="value: source, event: { keyup: $root.updateGameOnEnter }">
+							<input type="text" class="form-control" placeholder="Source" data-bind="value: source, event: { keyup: $root.updateGameOnEnter }">
 							<div class="clear"></div>
 						</div>
 						<div class="form-group">
 							<label for="platform">Platform</label>
-							<input type="text" class="form-control" id="edit_platform" placeholder="Platform" data-bind="value: platform, event: { keyup: $root.updateGameOnEnter }">
+							<input type="text" class="form-control" placeholder="Platform" data-bind="value: platform, event: { keyup: $root.updateGameOnEnter }">
 							<div class="clear"></div>
 						</div>
 						<div class="form-group">
 							<label for="platform">Purchased Date</label>
-							<input type="text" class="form-control datepicker" id="edit_purchasedate" placeholder="Purchase Date" data-bind="value: date_created, event: { keyup: $root.updateGameOnEnter }">
+							<input type="text" class="form-control datepicker" placeholder="Purchase Date" data-bind="value: date_created, event: { keyup: $root.updateGameOnEnter }">
 							<div class="clear"></div>
 						</div>
 					</form>
