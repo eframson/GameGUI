@@ -14,6 +14,10 @@ button:focus {
 	display: none;
 }
 
+.no_right_padding {
+	padding-right: 0;
+}
+
 .ajax-notice {
 	display: none;
 	margin-bottom: 10px;
@@ -128,6 +132,12 @@ button:focus {
 .all-games .row.thead > div {
 	font-weight: bold;
 	cursor: pointer;
+}
+
+.all-games .row.table-meta .num_results {
+	display: inline-block;
+	padding-top: 10px;
+	font-size: 12px;
 }
 
 .all-games .row.table-meta .filter-container {

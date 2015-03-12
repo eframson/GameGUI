@@ -19,6 +19,9 @@ var Games = function() {
 			platform: undefined,
 			source: undefined,
 			date_created: undefined,
+			has_played: undefined,
+			has_finished: undefined,
+			replay: undefined,
 		});
 		self.pageSize = ko.observable(25);
 		self.currentPageNo = ko.observable(1);
@@ -935,6 +938,8 @@ var Games = function() {
 				title: "",
 				source: "",
 				platform: "",
+				has_played: 2,
+				source_id: "",
 		};
 	}
 

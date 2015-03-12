@@ -94,6 +94,7 @@
 					if($prop == "id"){
 						continue;
 					}
+
 					$game->$prop = $value;
 				}
 
@@ -187,6 +188,15 @@
 						
 						if($prop == "id" || $prop == "selected"){
 							continue;
+						}
+						if($prop == "date_created"){
+							$date_parts = date_parse($value);
+
+    						$value = $date_parts["year"] . "-" . $date_parts["month"] . "-" . $date_parts["day"]
+    						. " " . ($date_parts["hour"] ? $date_parts["hour"] : "00")
+    						. ":" . ($date_parts["minute"] ? $date_parts["minute"] : "00")
+    						. ":" . ($date_parts["second"] ? $date_parts["second"] : "00");
+
 						}
 						if($value == "<DELETE>"){
 							$value = null;

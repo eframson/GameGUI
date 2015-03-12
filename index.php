@@ -48,7 +48,9 @@
 		- Hide modal window when another is triggered
 		- Re-applying filter fucks up ordering?
 		- Can't deselect games that aren't in the current filter page
-		- Crysis/F.E.A.R games missing/missing data?
+		- Add loading indicator when mass update modal is submitted
+		- BUG: Sorting is screwy + filtering?
+		- Update page when there are fewer total pages available (i.e. - current page if current page > max pages else max pages)
 	-->
 	<body>
 		<div class="navbar navbar-inverse navbar-fixed-top" role="navigation">
@@ -91,7 +93,22 @@
 						</div>
 						<div class="form-group">
 							<label for="platform">Purchased Date</label>
-							<input type="text" class="form-control datepicker" placeholder="Purchase Date" data-bind="value: date_created, event: { keyup: $root.updateGameOnEnter }">
+							<input type="text" class="form-control datepicker" placeholder="Purchase Date" data-bind="value: date_created, event: { keyup: $root.massUpdateOnEnter }">
+							<div class="clear"></div>
+						</div>
+						<div class="form-group">
+							<label for="platform">Has Played</label>
+							<input type="text" class="form-control" placeholder="Has Played" data-bind="value: has_played, event: { keyup: $root.massUpdateOnEnter }">
+							<div class="clear"></div>
+						</div>
+						<div class="form-group">
+							<label for="platform">Has Finished</label>
+							<input type="text" class="form-control" placeholder="Has Finished" data-bind="value: has_finished, event: { keyup: $root.massUpdateOnEnter }">
+							<div class="clear"></div>
+						</div>
+						<div class="form-group">
+							<label for="platform">Replay Indicator</label>
+							<input type="text" class="form-control" placeholder="Replay Indicator" data-bind="value: replay, event: { keyup: $root.massUpdateOnEnter }">
 							<div class="clear"></div>
 						</div>
 						<div class="form-group">
@@ -129,6 +146,16 @@
 							<input type="text" class="form-control" placeholder="Platform" data-bind="value: platform, event: { keyup: $root.createGameOnEnter }">
 							<div class="clear"></div>
 						</div>
+						<div class="form-group">
+							<label for="platform">Has Played</label>
+							<input type="text" class="form-control" placeholder="Has Played" data-bind="value: has_played, event: { keyup: $root.createGameOnEnter }">
+							<div class="clear"></div>
+						</div>
+						<div class="form-group">
+							<label>Source ID</label>
+							<input type="text" class="form-control" placeholder="Source ID" data-bind="value: source_id, event: { keyup: $root.createGameOnEnter }">
+							<div class="clear"></div>
+						</div>
 					</form>
 		      </div>
 		      <div class="modal-footer">
@@ -146,28 +173,53 @@
 		      		<div class="ajax-notice" data-bind="css: $root.messageClass, showMessage: $root.activeMessage()"></div>
 					<form role="form-horizontal">
 						<div class="form-group">
-							<label for="id">Id</label>
-							<input disabled="disabled" type="text" class="form-control" id="edit_id" placeholder="Id" data-bind="value: id">
+							<label>Id</label>
+							<input disabled="disabled" type="text" class="form-control" placeholder="Id" data-bind="value: id">
 							<div class="clear"></div>
 						</div>
 						<div class="form-group">
-							<label for="title">Title</label>
+							<label>Title</label>
 							<input type="text" class="form-control" placeholder="Title" data-bind="value: title, event: { keyup: $root.updateGameOnEnter }">
 							<div class="clear"></div>
 						</div>
 						<div class="form-group">
-							<label for="source">Source</label>
+							<label>Source</label>
 							<input type="text" class="form-control" placeholder="Source" data-bind="value: source, event: { keyup: $root.updateGameOnEnter }">
 							<div class="clear"></div>
 						</div>
 						<div class="form-group">
-							<label for="platform">Platform</label>
+							<label>Platform</label>
 							<input type="text" class="form-control" placeholder="Platform" data-bind="value: platform, event: { keyup: $root.updateGameOnEnter }">
 							<div class="clear"></div>
 						</div>
 						<div class="form-group">
-							<label for="platform">Purchased Date</label>
+							<label>Purchased Date</label>
 							<input type="text" class="form-control datepicker" placeholder="Purchase Date" data-bind="value: date_created, event: { keyup: $root.updateGameOnEnter }">
+							<div class="clear"></div>
+						</div>
+						<div class="form-group">
+							<label>Has Played</label>
+							<input type="text" class="form-control" placeholder="Has Played" data-bind="value: has_played, event: { keyup: $root.updateGameOnEnter }">
+							<div class="clear"></div>
+						</div>
+						<div class="form-group">
+							<label for="platform">Has Finished</label>
+							<input type="text" class="form-control" placeholder="Has Finished" data-bind="value: has_finished, event: { keyup: $root.updateGameOnEnter }">
+							<div class="clear"></div>
+						</div>
+						<div class="form-group">
+							<label for="platform">Replay Indicator</label>
+							<input type="text" class="form-control" placeholder="Replay Indicator" data-bind="value: replay, event: { keyup: $root.updateGameOnEnter }">
+							<div class="clear"></div>
+						</div>
+						<div class="form-group">
+							<label>Source ID</label>
+							<input disabled="disabled" type="text" class="form-control" placeholder="Source ID" data-bind="value: source_id">
+							<div class="clear"></div>
+						</div>
+						<div class="form-group">
+							<label>Last Updated</label>
+							<input disabled="disabled" type="text" class="form-control" placeholder="Last Updated" data-bind="value: date_updated">
 							<div class="clear"></div>
 						</div>
 					</form>
@@ -220,7 +272,7 @@
 							</div>
 						</div>
 					</div>
-					<div class="col-md-1"></div>
+					<div class="col-md-1 no_right_padding"><span class="num_results" data-bind="text: ko.unwrap(getAppropriateDataStore()).length + ' results'"></span></div>
 					<div class="col-md-3 filter-container">
 						<input autocomplete="off" placeholder="Filter (hit Enter when done)" title="Filter" class="form-control filter" type="text" data-bind="event: { keyup: applyFiltering }">
 						<a class="clear-icon" href="#" data-bind="event: {focus: preventFocus}, click: clearFilter"><span class="glyphicon glyphicon-remove"></span></a>
