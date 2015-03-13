@@ -50,6 +50,7 @@
 		- Can't deselect games that aren't in the current filter page
 		- Add loading indicator when mass update modal is submitted
 		- BUG: Sorting is screwy + filtering?
+		- Clear selection should clear all selected games, not just ones on the current page
 		- Update page when there are fewer total pages available (i.e. - current page if current page > max pages else max pages)
 	-->
 	<body>

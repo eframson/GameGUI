@@ -840,10 +840,9 @@ var Games = function() {
 
 	this.applySortingToDataStore = function(){
 
-		var sortField = self.currentGameListSorting().column,
-			sortDir = self.currentGameListSorting().dir,
-			//appropriateDataStore = self.getAppropriateDataStore();
-			appropriateDataStore = self.overviewDataStore;
+		var sortField = self.currentGameListSorting().column;
+		var sortDir = self.currentGameListSorting().dir;
+		var appropriateDataStore = self.getAppropriateDataStore();
 		
 		appropriateDataStore.sort(function(left, right){
 			var leftField = left[sortField]();
