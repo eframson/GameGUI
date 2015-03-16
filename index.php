@@ -52,6 +52,7 @@
 		- BUG: Sorting is screwy + filtering?
 		- Clear selection should clear all selected games, not just ones on the current page
 		- Update page when there are fewer total pages available (i.e. - current page if current page > max pages else max pages)
+		- Allow read-only fields to be filled out if empty, otherwise readonly
 	-->
 	<body>
 		<div class="navbar navbar-inverse navbar-fixed-top" role="navigation">
@@ -108,8 +109,8 @@
 							<div class="clear"></div>
 						</div>
 						<div class="form-group">
-							<label for="platform">Replay Indicator</label>
-							<input type="text" class="form-control" placeholder="Replay Indicator" data-bind="value: replay, event: { keyup: $root.massUpdateOnEnter }">
+							<label for="platform">Playability Rating</label>
+							<input type="text" class="form-control" placeholder="Playability Rating" data-bind="value: play_rating, event: { keyup: $root.massUpdateOnEnter }">
 							<div class="clear"></div>
 						</div>
 						<div class="form-group">
@@ -209,8 +210,8 @@
 							<div class="clear"></div>
 						</div>
 						<div class="form-group">
-							<label for="platform">Replay Indicator</label>
-							<input type="text" class="form-control" placeholder="Replay Indicator" data-bind="value: replay, event: { keyup: $root.updateGameOnEnter }">
+							<label for="platform">Playability Rating</label>
+							<input type="text" class="form-control" placeholder="Playability Rating" data-bind="value: play_rating, event: { keyup: $root.updateGameOnEnter }">
 							<div class="clear"></div>
 						</div>
 						<div class="form-group">

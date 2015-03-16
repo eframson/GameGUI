@@ -21,7 +21,7 @@ var Games = function() {
 			date_created: undefined,
 			has_played: undefined,
 			has_finished: undefined,
-			replay: undefined,
+			play_rating: undefined,
 		});
 		self.pageSize = ko.observable(25);
 		self.currentPageNo = ko.observable(1);
