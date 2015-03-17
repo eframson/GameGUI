@@ -53,6 +53,7 @@
 		- Clear selection should clear all selected games, not just ones on the current page
 		- Update page when there are fewer total pages available (i.e. - current page if current page > max pages else max pages)
 		- Allow read-only fields to be filled out if empty, otherwise readonly
+		- Make single-game update success message unique from mass update
 	-->
 	<body>
 		<div class="navbar navbar-inverse navbar-fixed-top" role="navigation">
@@ -111,6 +112,16 @@
 						<div class="form-group">
 							<label for="platform">Playability Rating</label>
 							<input type="text" class="form-control" placeholder="Playability Rating" data-bind="value: play_rating, event: { keyup: $root.massUpdateOnEnter }">
+							<div class="clear"></div>
+						</div>
+						<div class="form-group">
+							<label for="platform">Open Ended</label>
+							<input type="text" class="form-control" placeholder="Open Ended" data-bind="value: open_ended, event: { keyup: $root.massUpdateOnEnter }">
+							<div class="clear"></div>
+						</div>
+						<div class="form-group">
+							<label for="platform">Notes</label>
+							<input type="text" class="form-control" placeholder="Notes" data-bind="value: notes, event: { keyup: $root.massUpdateOnEnter }">
 							<div class="clear"></div>
 						</div>
 						<div class="form-group">
@@ -222,6 +233,16 @@
 						<div class="form-group">
 							<label>Last Updated</label>
 							<input disabled="disabled" type="text" class="form-control" placeholder="Last Updated" data-bind="value: date_updated">
+							<div class="clear"></div>
+						</div>
+						<div class="form-group">
+							<label for="platform">Open Ended</label>
+							<input type="text" class="form-control" placeholder="Open Ended" data-bind="value: open_ended, event: { keyup: $root.updateGameOnEnter }">
+							<div class="clear"></div>
+						</div>
+						<div class="form-group">
+							<label for="platform">Notes</label>
+							<input type="text" class="form-control" placeholder="Notes" data-bind="value: notes, event: { keyup: $root.updateGameOnEnter }">
 							<div class="clear"></div>
 						</div>
 					</form>
