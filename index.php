@@ -34,18 +34,15 @@
 		<![endif]-->
 	</head>
 	<!-- @TODOs
-		- Put in some content in "home" so one tab's content can be easily distinguished from another
 		- Clean up tab display logic
 		- Re-sort list on partially successful update
+		- Re-apply filter on update?
 		- Dynamic syntax highlighting for filter queries
 		- Provide instructions for filter syntax somewhere
 		- Show a user-friendly string translation of the filter string
 		- Let users filter by NULL or empty values
-		- Make mass update and create game modals submit by default when enter key is pressed like update does currently
 		- Break out filtering logic into subfunction maybe?
 		- Add ability to merge games
-		- Re-apply filter on update?
-		- Hide modal window when another is triggered
 		- Re-applying filter fucks up ordering?
 		- Can't deselect games that aren't in the current filter page
 		- Add loading indicator when mass update modal is submitted
@@ -54,6 +51,10 @@
 		- Update page when there are fewer total pages available (i.e. - current page if current page > max pages else max pages)
 		- Allow read-only fields to be filled out if empty, otherwise readonly
 		- Make single-game update success message unique from mass update
+		- BUG: Edit game, close modal window, select game, trigger mass update modal
+		- BUG: 36 filtered results, but only 1 page?
+		- Show loader icon in homepage sections while content is loading
+		- Store page number separately for filtered vs non-filtered results
 	-->
 	<body>
 		<div class="navbar navbar-inverse navbar-fixed-top" role="navigation">
@@ -272,7 +273,21 @@
 					<div class="home-section col-md-5">Useful Controls (add game button, and...?)</div>
 				</div>
 				<div class="row">
-					<div class="home-section col-md-5">Recently Added</div>
+					<div class="home-section col-md-5 recently-added">
+						<h4>Recently Added</h4>
+						<div>
+							<span class="title-header">Title</span>
+							<span class="date-header">Date Added</span>
+							<div class="clear"></div>
+						</div>
+						<div data-bind="foreach: recentlyAddedGames">
+							<div>
+								<span class="title" data-bind="text: title"></span>
+								<span class="date" data-bind="text: date_created"></span>
+								<div class="clear"></div>
+							</div>
+						</div>
+					</div>
 					<div class="col-md-2"></div>
 					<div class="home-section col-md-5">Bottom right (lol, what content goes here?)</div>
 				</div>

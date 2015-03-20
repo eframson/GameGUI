@@ -97,6 +97,35 @@ button:focus {
 	padding: 10px;
 }
 
+.home .home-section.recently-added h4{
+	margin-top: 0px;
+	margin-bottom: 5px;
+	text-align: left;
+}
+
+.home .home-section.recently-added span{
+	display: inline-block;
+}
+
+.home .home-section.recently-added span.title,
+.home .home-section.recently-added span.title-header{
+	float: left;
+}
+
+.home .home-section.recently-added span.date,
+.home .home-section.recently-added span.date-header{
+	float: right;
+}
+
+.home .home-section.recently-added span.title-header,
+.home .home-section.recently-added span.date-header{
+	font-weight: bold;
+}
+
+.home .home-section.recently-added span.date-header{
+	margin-right: 54px;
+}
+
 .all-games .table-meta div.pagination-controls {
 	padding-top: 9px;
 	padding-left: 0px;

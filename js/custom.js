@@ -83,6 +83,18 @@ var Games = function() {
         	return allSelected;
         });
 
+		self.recentlyAddedGames = ko.computed(function(){
+			var gameListCopy = self.overviewDataStore().slice(0);
+
+			gameListCopy.sort(function(left,right){
+				var leftField = new Date(left.date_created());
+				var rightField = new Date(right.date_created());
+				return leftField == rightField ? 0 : (leftField > rightField ? -1 : 1) ;
+			});
+
+			return gameListCopy.slice(0,5);
+		});
+
 		self.allSelected.subscribe(function(val){
 			if(val && val != 0){
 				self.selectedGames( ko.utils.arrayMap( self.gameList(), function(item){ return item.id; } ) );
@@ -840,11 +852,11 @@ var Games = function() {
 		this.applySortingToDataStore();
 	}
 
-	this.applySortingToDataStore = function(){
+	this.applySortingToDataStore = function(optionalDataStore){
 
 		var sortField = self.currentGameListSorting().column;
 		var sortDir = self.currentGameListSorting().dir;
-		var appropriateDataStore = self.getAppropriateDataStore();
+		var appropriateDataStore = ( optionalDataStore !== undefined ) ? optionalDataStore : self.getAppropriateDataStore() ;
 		
 		appropriateDataStore.sort(function(left, right){
 			var leftField = left[sortField]();
