@@ -34,27 +34,37 @@
 		<![endif]-->
 	</head>
 	<!-- @TODOs
-		- Clean up tab display logic
-		- Re-sort list on partially successful update
-		- Re-apply filter on update?
-		- Dynamic syntax highlighting for filter queries
-		- Provide instructions for filter syntax somewhere
-		- Show a user-friendly string translation of the filter string
-		- Let users filter by NULL or empty values
-		- Break out filtering logic into subfunction maybe?
+		
+		NEW FEATURES
+		- To-play list management tab + mini-display on frontend
 		- Add ability to merge games
-		- Re-applying filter fucks up ordering?
-		- Can't deselect games that aren't in the current filter page
-		- Add loading indicator when mass update modal is submitted
-		- BUG: Sorting is screwy + filtering?
-		- Clear selection should clear all selected games, not just ones on the current page
-		- Update page when there are fewer total pages available (i.e. - current page if current page > max pages else max pages)
-		- Allow read-only fields to be filled out if empty, otherwise readonly
+		- Dynamic syntax highlighting for filter queries
+		- Show a user-friendly string translation of the filter string
+			IDEA:
+				ALL of the following must be true:
+					- source HAS steam
+					- title HAS sam
+				AT LEAST ONE of the following must be true:
+					- playability_rating EQUALS 4
+		- Store page number separately for filtered vs non-filtered results (?)
+
+		GUI IMPROVEMENTS
 		- Make single-game update success message unique from mass update
-		- BUG: Edit game, close modal window, select game, trigger mass update modal
-		- BUG: 36 filtered results, but only 1 page?
+		- Allow read-only fields to be filled out if empty, otherwise readonly
+		- Re-apply filter on game data update?
 		- Show loader icon in homepage sections while content is loading
-		- Store page number separately for filtered vs non-filtered results
+		- Re-sort list on partially successful mass update
+		- Add loading indicator when mass update modal is submitted
+		- Expand filter syntax instructions
+		- Add blue highlights to "pencil" edit button, and red highlighting to trash can icon
+		- Maybe add highlighting to select boxes? Possibly change "selected" color to blue?
+
+		CODE IMPROVEMENTS
+		- Clean up tab display logic
+		- Break out filtering logic into subfunction maybe?
+		
+		BUGS
+		- BUG: "title=sam OR title=star AND platform=windows" filter doesn't work as expected (should return windows games with "sam" or "star" in the title)
 	-->
 	<body>
 		<div class="navbar navbar-inverse navbar-fixed-top" role="navigation">
@@ -255,6 +265,53 @@
 		      </div>
 			</div>
 
+			<div class="modal-content filter-instructions">
+			    <div class="modal-header">
+			        <button type="button" class="close" data-bind="click: hideModal"><span aria-hidden="true">&times;</span><span class="sr-only">Close</span></button>
+			        <h4 class="modal-title" id="myModalLabel">How To Use Filters</h4>
+			    </div>
+				<div class="modal-body">
+					<p>Some examples:</p>
+					<table class="table">
+					<tr>
+						<td>source=steam</td>
+						<td>return all games that contain "steam" somewhere in their source</td>
+					</tr>
+						<td>source=steam AND title=sam</td>
+						<td>return all games that contain "steam" somewhere in the source AND that contain "sam" in the title</td>
+					</tr>
+					</tr>
+						<td>source=steam OR source=gog</td>
+						<td>return all games that contain "steam" somewhere in the source OR that contain "gog" in the source</td>
+					</tr>
+					</tr>
+						<td>title=sam OR source=steam OR source=gog</td>
+						<td>return all games that contain "sam" in the title OR that contain "steam" in the source OR that contain "gog" in the source</td>
+					</tr>
+					</tr>
+						<td>source=NULL</td>
+						<td>return all games where source is not set</td>
+					</tr>
+					</tr>
+						<td>source=EMPTY</td>
+						<td>return all games where source is an empty string, i.e. - ''</td>
+					</tr>
+					</table>
+
+					<p>Notes:</p>
+					<ul>
+						<li>Keywords (AND, OR) are CASE SENSITIVE</li>
+						<li>Keywords must be followed and preceded by a single space</li>
+						<li>Operators (=) must not be followed by any spacing</li>
+						<li>Match values are case insensitive</li>
+						<li>If multiple filters are given with AND &amp; OR, the very first term will implicitly have the keyword of the filter immediately following it (e.g. - title=foo AND source=bar will only return results that have a title containing 'foo' and a title containing 'bar'. title=foo OR source=bar will return results that have a title containing 'foo' OR a source containing 'bar'</li>
+					</ul>
+
+				</div>
+				<!--<div class="modal-footer">
+				</div>-->
+		    </div>
+
 		  </div>
 		</div>
 
@@ -297,9 +354,11 @@
 				<div class="row table-meta">
 					<div class="col-md-3 pagination-controls">
 						<span class="page-label page-counter" data-bind="text: 'Page: ' + currentPageNo() + '/' + currentGameListTotalPages()"></span>
-						<button data-bind="click: prevGameListPage" class="page-control glyphicon glyphicon-triangle-left"></button>
-						<span class="page-label" data-bind="text: '(' + pageSize() + ' per page)'"></span>
-						<button data-bind="click: nextGameListPage" class="page-control glyphicon glyphicon-triangle-right"></button>
+						<button data-bind="click: firstGameListPage" class="page-control glyphicon glyphicon-step-backward first-page"></button>
+						<button data-bind="click: prevGameListPage" class="page-control glyphicon glyphicon-triangle-left prev-page"></button>
+						<span class="page-label" data-bind="text: '( < ' + pageSize() + ' per page)'"></span>
+						<button data-bind="click: nextGameListPage" class="page-control glyphicon glyphicon-triangle-right next-page"></button>
+						<button data-bind="click: lastGameListPage" class="page-control glyphicon glyphicon-step-forward last-page"></button>
 					</div>
 					<div class="col-md-5">
 						<div class="slider-container">
@@ -312,6 +371,7 @@
 					</div>
 					<div class="col-md-1 no_right_padding"><span class="num_results" data-bind="text: ko.unwrap(getAppropriateDataStore()).length + ' results'"></span></div>
 					<div class="col-md-3 filter-container">
+						<a class="show-info-icon" href="#" data-bind="event: {focus: preventFocus}, click: showFilterInfoPopup"><span class="glyphicon glyphicon-question-sign"></span></a>
 						<input autocomplete="off" placeholder="Filter (hit Enter when done)" title="Filter" class="form-control filter" type="text" data-bind="event: { keyup: applyFiltering }">
 						<a class="clear-icon" href="#" data-bind="event: {focus: preventFocus}, click: clearFilter"><span class="glyphicon glyphicon-remove"></span></a>
 					</div>
@@ -346,10 +406,12 @@
 
 				<div class="row table-meta">
 					<div class="col-md-3 pagination-controls">
-						<span class="page-label" data-bind="text: 'Page: ' + currentPageNo() + '/' + currentGameListTotalPages()"></span>
-						<button data-bind="click: prevGameListPage" class="page-control glyphicon glyphicon-triangle-left"></button>
-						<span class="page-label" data-bind="text: '(' + pageSize() + ' per page)'"></span>
-						<button data-bind="click: nextGameListPage" class="page-control glyphicon glyphicon-triangle-right"></button>
+						<span class="page-label page-counter" data-bind="text: 'Page: ' + currentPageNo() + '/' + currentGameListTotalPages()"></span>
+						<button data-bind="click: firstGameListPage" class="page-control glyphicon glyphicon-step-backward first-page"></button>
+						<button data-bind="click: prevGameListPage" class="page-control glyphicon glyphicon-triangle-left prev-page"></button>
+						<span class="page-label" data-bind="text: '( < ' + pageSize() + ' per page)'"></span>
+						<button data-bind="click: nextGameListPage" class="page-control glyphicon glyphicon-triangle-right next-page"></button>
+						<button data-bind="click: lastGameListPage" class="page-control glyphicon glyphicon-step-forward last-page"></button>
 					</div>
 					<div class="col-md-8"></div>
 				</div>

@@ -35,6 +35,8 @@ var Games = function() {
 		self.filterAndTerm = "AND";
 		self.filterOrTerm = "OR";
 		self.filterFieldSplitTerm = "=";
+		self.filterNullTerm = "NULL";
+		self.filterEmptyTerm = "EMPTY";
 
 		self.currentGameCancelData = Array();
 		self.modalIsShown = false;
@@ -45,10 +47,19 @@ var Games = function() {
 			if(self.activeTab() == "all"){
 				var appropriateDataStore = ko.unwrap(self.getAppropriateDataStore());
 				var page_no = self.currentPageNo();
+				//METHOD 1: This will always show 25 (or whatever number) per page, but the last and penultimate pages could potentially have some overlap
+				/*
 				end_no = self.pageSize() * page_no;
 				end_no = (end_no < appropriateDataStore.length) ? end_no : appropriateDataStore.length;
 				start_no = end_no - self.pageSize();
 				start_no = (start_no < 1) ? 0 : start_no ;
+				*/
+				//METHOD 2: This will show up to 25 (or however many) per page
+				start_no = ((self.currentPageNo() || 0) * self.pageSize()) - self.pageSize();
+				start_no = (start_no < 0) ? 0 : start_no ;
+				end_no = self.pageSize() * page_no;
+				end_no = (end_no < appropriateDataStore.length) ? end_no : appropriateDataStore.length;
+
 				return appropriateDataStore.slice(start_no, end_no);
 			}else{
 				return Array();
@@ -56,6 +67,7 @@ var Games = function() {
         });
 
         self.selectedGames = ko.computed(function(){
+        	console.log("selectedGames");
 			if(self.activeTab() == "all"){
 				var appropriateDataStore = ko.unwrap(self.overviewDataStore());
 				var selectedGames = ko.utils.arrayFilter(appropriateDataStore, function(game){
@@ -68,6 +80,7 @@ var Games = function() {
         });
 
         self.allSelectedOnPage = ko.computed(function(){
+        	console.log("allSelectedOnPage");
         	var allSelected = true;
         	if(self.currentPage().length > 0){
 	        	$.each(self.currentPage(), function(idx, elem){
@@ -126,7 +139,7 @@ var Games = function() {
 
 		self.currentGameListTotalPages = ko.computed(function(){
 			var appropriateDataStore = ko.unwrap(self.getAppropriateDataStore()),
-				pageNum = Math.floor(appropriateDataStore.length / self.pageSize());
+				pageNum = Math.ceil(appropriateDataStore.length / self.pageSize());
 			return (pageNum > 0) ? pageNum : 1 ;
 		});
 
@@ -547,12 +560,9 @@ var Games = function() {
 	}
 
 	this.clearSelection = function(viewModel, event){
-		
-		ko.utils.arrayForEach(ko.unwrap(self.getAppropriateDataStore()), function(game) {
+		ko.utils.arrayForEach(ko.unwrap(self.overviewDataStore()), function(game) {
 			game.selected(false);
 		});
-
-		self.getAppropriateDataStore().notifySubscribers(ko.unwrap(self.getAppropriateDataStore()));
 	}
 
 	this.toggleSelectAll = function(gameViewModel, event){
@@ -587,6 +597,10 @@ var Games = function() {
     	return true;
     }
 
+    this.firstGameListPage = function(viewModel, event){
+    	self.currentPageNo(1);
+    }
+
 	this.prevGameListPage = function(viewModel, event){
 		self.currentPageNo( ( self.currentPageNo() > 1 ? self.currentPageNo() - 1 : 1) )  ;
 	}
@@ -594,6 +608,10 @@ var Games = function() {
 	this.nextGameListPage = function(viewModel, event){
 		var maxPage = self.currentGameListTotalPages();
 		self.currentPageNo( ( (self.currentPageNo() < maxPage) ? self.currentPageNo() + 1 : self.currentPageNo()) );
+	}
+
+	this.lastGameListPage = function(viewModel, event){
+		self.currentPageNo(self.currentGameListTotalPages());
 	}
 
 	this.parseTermString = function(termString){
@@ -661,11 +679,14 @@ var Games = function() {
 
 					for(i = 0; i < termObjects.and.length; i++){
 						var matchNull = false;
+						var matchEmpty = false;
 						var matchTerm = termObjects.and[i].value;
 						var matchField = termObjects.and[i].field;
 						
-						if(matchTerm == 'NULL'){
+						if(matchTerm == self.matchNullTerm){
 							matchNull = true;
+						}else if(matchTerm == self.matchEmptyTerm){
+							matchEmpty = true;
 						}
 
 						if( matchField == 'ANY' ){
@@ -680,6 +701,11 @@ var Games = function() {
 
 								if(matchNull){
 									if(gameArray[prop] == null){
+										loopMatch = true;
+										break;
+									}
+					        	}else if(matchEmpty){
+									if(gameArray[prop] == ''){
 										loopMatch = true;
 										break;
 									}
@@ -698,9 +724,14 @@ var Games = function() {
 
 						}else{
 							
-							//If one of our "and" stipulations doesn't match, abort the whole thing because we need all "and" fields to match
+							//If one of our "AND" stipulations doesn't match, abort the whole thing because we need all "AND" fields to match
 							if(matchNull){
 								if(gameArray[matchField] != null){
+									doesMatch = false;
+									break;
+								}
+							}else if(matchEmpty){
+								if(gameArray[matchField] != ''){
 									doesMatch = false;
 									break;
 								}
@@ -728,11 +759,14 @@ var Games = function() {
 
 					for(i = 0; i < termObjects.or.length; i++){
 						var matchNull = false;
+						var matchEmpty = false;
 						var matchTerm = termObjects.or[i].value;
 						var matchField = termObjects.or[i].field;
 						
 						if(matchTerm == 'NULL'){
 							matchNull = true;
+						}else if (matchTerm == 'EMPTY'){
+							matchEmpty = true;
 						}
 
 						if( matchField == 'ANY' ){
@@ -745,6 +779,11 @@ var Games = function() {
 
 					        	if(matchNull){
 					        		if(gameArray[prop] == null){
+										loopMatch = true;
+										break;
+									}
+					        	}else if(matchEmpty){
+					        		if(gameArray[prop] == ''){
 										loopMatch = true;
 										break;
 									}
@@ -767,6 +806,11 @@ var Games = function() {
 									doesMatch = true;
 									break;
 								}
+					       	}else if(matchEmpty){
+								if(gameArray[matchField] == ''){
+									doesMatch = true;
+									break;
+								}
 					       	}else{
 					        	if( (gameArray[matchField] || "").match( new RegExp(matchTerm, "i")) ){
 									doesMatch = true;
@@ -783,7 +827,6 @@ var Games = function() {
 				}
 		    });
 
-			console.log(matches);
 		    return matches;
 
 		}else{
@@ -799,6 +842,7 @@ var Games = function() {
 			if(val && val != ""){
 				self.filteredList(self.getFilteredDataStore(val));
 				self.listMode("filter");
+				self.currentPageNo(1);
 			}else{
 				self.filteredList(Array());
 				self.listMode("all");
@@ -812,6 +856,11 @@ var Games = function() {
 		$elem.parents("a").siblings("input").val(undefined);
 		self.filteredList(Array());
 		self.listMode("all");
+		this.applySortingToDataStore();
+	}
+
+	this.showFilterInfoPopup = function(viewModel, event){
+		self.showModal("filter-instructions");
 	}
 
 	this.preventFocus = function(viewModel, event){
@@ -1064,7 +1113,6 @@ $(document).ready(function(){
 });
 
 $(window).on('hashchange', function(){
-	console.log("change");
 	var hash = window.location.hash;
 	gameViewModel.activeTab(hash.replace(/^#/, ''));
 });

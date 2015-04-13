@@ -148,6 +148,29 @@ button:focus {
 	padding: 0;
 }
 
+.all-games .table-meta div.pagination-controls .page-control:hover {
+	/*color: #777;*/
+	color: #337ab7;
+}
+
+.all-games .table-meta div.pagination-controls .page-control.prev-page,
+.all-games .table-meta div.pagination-controls .page-control.next-page {
+	top: 1px;
+}
+
+.all-games .table-meta div.pagination-controls .page-control.first-page,
+.all-games .table-meta div.pagination-controls .page-control.last-page {
+	top: 0px;
+}
+
+.all-games .table-meta div.pagination-controls .page-control.prev-page {
+	margin-left: -8px;
+}
+
+.all-games .table-meta div.pagination-controls .page-control.next-page {
+	margin-right: -8px;
+}
+
 .all-games .row:not(:last-child) {
 	padding: 10px 0;
 	border-bottom: solid #636363 1px;
@@ -196,6 +219,28 @@ button:focus {
 }
 
 .all-games .row.table-meta .filter-container a.clear-icon .glyphicon {
+	top:0;
+	font-size: 16px;
+}
+
+.all-games .row.table-meta .filter-container a.show-info-icon {
+	position:absolute;
+	top: 10px;
+	left: -11px;
+	color: #777;
+	padding: 0;
+}
+
+.all-games .row.table-meta .filter-container a.show-info-icon:hover {
+	color: #BDBDBD;
+}
+
+.all-games .row.table-meta .filter-container a.show-info-icon:active,
+.all-games .row.table-meta .filter-container a.show-info-icon:focus {
+	color: #777;
+}
+
+.all-games .row.table-meta .filter-container a.show-info-icon .glyphicon {
 	top:0;
 	font-size: 16px;
 }
