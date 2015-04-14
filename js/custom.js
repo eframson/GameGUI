@@ -32,11 +32,11 @@ var Games = function() {
 		self.activeRequests = ko.observable(0);
 		self.listMode = ko.observable("all");
 		self.filteredList = ko.observableArray();
-		self.filterAndTerm = "AND";
-		self.filterOrTerm = "OR";
-		self.filterFieldSplitTerm = "=";
 		self.filterNullTerm = "NULL";
 		self.filterEmptyTerm = "EMPTY";
+		self.validOperatorsRegEx = "!=|=|>|<|<=|>=|HAS|~=";
+		self.orTermsRegEx = "OR|\\|\\|";
+		self.andTermsRegEx = "AND|&&";
 
 		self.currentGameCancelData = Array();
 		self.modalIsShown = false;
@@ -67,7 +67,6 @@ var Games = function() {
         });
 
         self.selectedGames = ko.computed(function(){
-        	console.log("selectedGames");
 			if(self.activeTab() == "all"){
 				var appropriateDataStore = ko.unwrap(self.overviewDataStore());
 				var selectedGames = ko.utils.arrayFilter(appropriateDataStore, function(game){
@@ -80,7 +79,6 @@ var Games = function() {
         });
 
         self.allSelectedOnPage = ko.computed(function(){
-        	console.log("allSelectedOnPage");
         	var allSelected = true;
         	if(self.currentPage().length > 0){
 	        	$.each(self.currentPage(), function(idx, elem){
@@ -148,6 +146,48 @@ var Games = function() {
 		}, self);
 	}
 
+	this.operators = {
+		//"!=|=|>|<|=<|>=";
+		'=' : function(a, b){
+			return (a == b);
+		},
+		'!=' : function(a, b){
+			return (a != b);
+		},
+		'<' : function(a, b){
+			return (a < b);
+		},
+		'>' : function(a, b){
+			return (a > b);
+		},
+		'<=' : function(a, b){
+			return (a <= b);
+		},
+		'>=' : function(a, b){
+			return (a >= b);
+		},
+		'~=' : function(a, b){
+
+			//HAS NULL doesn't really make sense...let's make the user ask for that with "="
+			if(b == undefined){
+				return false;
+			}
+
+			if( a == undefined ){
+				a = "";
+			}else if(a.constructor !== String){
+				a = a.toString();
+			}
+
+			if( a.match( new RegExp(b, "i")) !== null ){
+				return true;
+			}
+			return false;
+		},
+		'HAS' : function(a, b){
+			return self.operators["~="](a, b);
+		},
+	}
 
 	this.initOverviewDataStore = function(){
 
@@ -616,221 +656,45 @@ var Games = function() {
 
 	this.parseTermString = function(termString){
 
-		var termObjects = { and: Array(), or: Array() };
 		if(termString === undefined){
 			console.log("No term string received");
 			return false;
 		}
+		matchingData = Array();
 
-		var fieldValuePairs = Array()
-			fieldValuePairs["and"] = Array(),
-			fieldValuePairs["or"] = Array(),
-			andOrRegex = new RegExp("(" + self.filterAndTerm + "|" + self.filterOrTerm + ")");
+		//Split on "AND"
+		var results = termString.split(new RegExp(self.andTermsRegEx));
 
-		var results = termString.split(andOrRegex);
+		//For each expression following each "AND"
+		for(i=0; i < results.length; i++){
+			var subTerms = Array(),
+				arrayValue;
+			subTerms = results[i].split(new RegExp(self.orTermsRegEx));
 
-		//Sort the filter string into "and" and "or" parts
-		if(results.length > 1){
-			
-			//Make sure that the first term has/can have an "AND/OR" associated with it
-			if(results.length % 2 == 1){
-				if(results[0].match(andOrRegex) === null){
-					//If the first term isn't prefaced with "AND/OR", default it to whatever the next term's logic is
-					results.unshift(results[1]);
-				}else{
-					//Display this as an actual error message when I get that all figured out...
-					console.log("Unable to parse search string");
-					return false;
+			if(subTerms.length == 1){
+				//No "OR" subcomponents, just one matching thing
+				arrayValue = self._getMatchingObjectFromTermString(subTerms[0]);
+
+			}else{
+				arrayValue = Array();
+				//For each expression separated by "OR"
+				for(j=0; j < subTerms.length; j++){
+					var term = subTerms[j].trim();
+
+					arrayValue.push(self._getMatchingObjectFromTermString(term));
 				}
 			}
-
-			//Sort each term into "and" and "or"
-			$.each(results, function(idx, value){
-				if(idx % 2 == 1){
-					var key = results[(idx-1)].toLowerCase();
-					fieldValuePairs[key].push(value.trim());
-				}
-			});
-
-		}else{
-			//This is arbitrary, if there's only one term it doesn't matter if it's an "and" or an "or"
-			fieldValuePairs["or"].push(termString);
+			matchingData[i] = arrayValue;
 		}
 
-		termObjects.and = self._parseTermArrayIntoFieldValueComponents(fieldValuePairs["and"]);
-		termObjects.or = self._parseTermArrayIntoFieldValueComponents(fieldValuePairs["or"]);
-
-		console.log(termObjects);
-		return termObjects;
+		return matchingData;
 
 	}
 
 	this.getFilteredDataStore = function(filterString){
-		if(filterString !== undefined){
-			
+		if(filterString !== undefined){	
 			var termObjects = self.parseTermString(filterString);
-
-			var matches = Array();
-			ko.utils.arrayForEach(self.overviewDataStore(), function(game) {
-				var gameArray = ko.mapping.toJS(game);
-
-				if(termObjects.and.length > 0){
-					var doesMatch = true;
-
-					for(i = 0; i < termObjects.and.length; i++){
-						var matchNull = false;
-						var matchEmpty = false;
-						var matchTerm = termObjects.and[i].value;
-						var matchField = termObjects.and[i].field;
-						
-						if(matchTerm == self.matchNullTerm){
-							matchNull = true;
-						}else if(matchTerm == self.matchEmptyTerm){
-							matchEmpty = true;
-						}
-
-						if( matchField == 'ANY' ){
-
-							var loopMatch = false;
-
-							for(prop in gameArray){
-								
-					        	if(prop == "id" || prop == "selected"){
-					        		continue;
-					        	}
-
-								if(matchNull){
-									if(gameArray[prop] == null){
-										loopMatch = true;
-										break;
-									}
-					        	}else if(matchEmpty){
-									if(gameArray[prop] == ''){
-										loopMatch = true;
-										break;
-									}
-					        	}else{
-						        	if( (gameArray[prop] || "").match( new RegExp(matchTerm, "i")) !== null ){
-										loopMatch = true;
-										break;
-									}
-								}
-					        }
-
-					        if( loopMatch == false){
-					        	doesMatch = false;
-					        	break;
-					        }
-
-						}else{
-							
-							//If one of our "AND" stipulations doesn't match, abort the whole thing because we need all "AND" fields to match
-							if(matchNull){
-								if(gameArray[matchField] != null){
-									doesMatch = false;
-									break;
-								}
-							}else if(matchEmpty){
-								if(gameArray[matchField] != ''){
-									doesMatch = false;
-									break;
-								}
-							}else{
-								if( (gameArray[matchField] || "").match( new RegExp(matchTerm, "i")) === null ){
-									doesMatch = false;
-									break;
-								}
-							}
-						}
-					}
-
-					if( doesMatch == false ){
-						return true;
-					}
-				}
-
-				if(doesMatch == true){
-					matches.push(game);
-					return true;
-				}
-
-				if(termObjects.or.length > 0){
-					var doesMatch = false;
-
-					for(i = 0; i < termObjects.or.length; i++){
-						var matchNull = false;
-						var matchEmpty = false;
-						var matchTerm = termObjects.or[i].value;
-						var matchField = termObjects.or[i].field;
-						
-						if(matchTerm == 'NULL'){
-							matchNull = true;
-						}else if (matchTerm == 'EMPTY'){
-							matchEmpty = true;
-						}
-
-						if( matchField == 'ANY' ){
-							var loopMatch = false;
-
-							for(prop in gameArray){
-					        	if(prop == "id" || prop == "selected"){
-					        		continue;
-					        	}
-
-					        	if(matchNull){
-					        		if(gameArray[prop] == null){
-										loopMatch = true;
-										break;
-									}
-					        	}else if(matchEmpty){
-					        		if(gameArray[prop] == ''){
-										loopMatch = true;
-										break;
-									}
-					        	}else{
-					        		if( (gameArray[prop] || "").match( new RegExp(matchTerm, "i")) ){
-										loopMatch = true;
-										break;
-									}
-								}
-					        }
-
-					        if( loopMatch == true){
-					        	doesMatch = true;
-					        	break;
-					        }
-
-						}else{
-							if(matchNull){
-								if(gameArray[matchField] == null){
-									doesMatch = true;
-									break;
-								}
-					       	}else if(matchEmpty){
-								if(gameArray[matchField] == ''){
-									doesMatch = true;
-									break;
-								}
-					       	}else{
-					        	if( (gameArray[matchField] || "").match( new RegExp(matchTerm, "i")) ){
-									doesMatch = true;
-									break;
-								}
-							}
-						}
-
-					}
-				}
-
-		        if(doesMatch == true){
-					matches.push(game);
-				}
-		    });
-
-		    return matches;
-
-		}else{
-			return Array();
+			return self._getFilteredDataStore(termObjects);
 		}
 	}
 	
@@ -977,22 +841,121 @@ var Games = function() {
 
 	}
 
-	this._parseTermArrayIntoFieldValueComponents = function(termArray){
-		var terms = Array();
-		$.each(termArray, function(idx, value){
-			var termParts = value.split(self.filterFieldSplitTerm),
-				fieldName = "",
-				fieldValue = "";
-			if(termParts.length==1){
-				fieldName = "ANY";
-				fieldValue = termParts[0];
-			}else{
-				fieldName = termParts[0];
-				fieldValue = termParts[1];
+	//Expects a termString like "bar", "foo=bar", "foo > bar", etc.
+	this._getMatchingObjectFromTermString = function(termString){
+
+		var matchingObject = {};
+		var termParts = termString.split(new RegExp("(" + self.validOperatorsRegEx + ")"));
+
+		if(termParts.length == 3){
+			matchingObject.matchField = termParts[0].trim();
+			matchingObject.matchOp = termParts[1].trim();
+			matchingObject.matchValue = termParts[2].trim();
+		}else if (termParts.length == 1){
+			matchingObject.matchField = "ANY";
+			matchingObject.matchOp = "HAS";
+			matchingObject.matchValue = termParts[0].trim();
+		}else{
+			return false;
+		}
+
+		return matchingObject;
+	}
+
+	this._getFilteredDataStore = function(matchingData){
+		var matches = Array();
+		ko.utils.arrayForEach(self.overviewDataStore(), function(game) {
+			//For each game, see if it matches
+
+			var doesGameMatch = self._doesGameMatch(game, matchingData);
+
+			if(doesGameMatch){
+				matches.push(game);
 			}
-			terms.push({field: fieldName, value: fieldValue});
+
 		});
-		return terms;
+		return matches;
+	}
+
+	this._doesGameMatch = function(game, matchingData){
+
+		var doesGameMatch = true;
+
+		//For each expression in the array of match data
+		$.each(matchingData, function(idx, topLevelMatchData){
+
+			var topLevelMatch = true;
+
+			//If this is a list of "OR" matchers
+			if(topLevelMatchData.constructor === Array){
+
+				var subLevelMatch = false;
+
+				//For each matcher
+				$.each(topLevelMatchData, function(objIdx, subLevelMatchData){
+
+					subLevelMatch = self._evaluateGameFieldsUsingMatchingParameters(game, subLevelMatchData);
+
+					//If one of our "sub level" expressions evaluates to true, the "top level" match for this iteration is good to go
+					if( subLevelMatch == true ){
+						topLevelMatch = true;
+						//The $.each equivalent of "break"
+						return false;
+					}
+
+				});
+
+				//If none of our "sub level" expressions evaluated to true, the "top level" match for this iteration is false overall
+				if (subLevelMatch == false){
+					topLevelMatch = false;
+				}
+				
+			}else{
+				//This is a simple match object
+				topLevelMatch = self._evaluateGameFieldsUsingMatchingParameters(game, topLevelMatchData);
+			}
+
+			//If one of our "top level" expressions evaluates to false, short circuit and return false to save time
+			if( topLevelMatch == false ){
+				doesGameMatch = false;
+				//The $.each equivalent of "break"
+				return false;
+			}
+			
+		});
+
+		return doesGameMatch;
+
+	}
+
+	this._evaluateGameFieldsUsingMatchingParameters = function(game, matchData){
+
+		var checkFields = Array();
+		var gameArray = ko.mapping.toJS(game);
+
+		if(matchData.matchField == 'ANY'){
+
+			checkFields = Object.keys(gameArray).filter(function(elem, idx){
+				if(elem != "id" && elem != "selected"){
+					return true;
+				}
+			});
+		}else{
+			checkFields.push(matchData.matchField);
+		}
+
+		if( matchData.matchValue == self.filterNullTerm ){
+			matchData.matchValue = undefined;
+		}else if( matchData.matchValue == self.filterEmptyTerm){
+			matchData.matchValue = "";
+		}
+
+		for(i=0; i < checkFields.length; i++){
+			if( self.operators[matchData.matchOp](gameArray[checkFields[i]], matchData.matchValue) ){
+				return true;
+			}
+		}
+		return false;
 	}
 
 	this.createNewEmptyGame = function(){

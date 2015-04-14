@@ -61,7 +61,6 @@
 
 		CODE IMPROVEMENTS
 		- Clean up tab display logic
-		- Break out filtering logic into subfunction maybe?
 		
 		BUGS
 		- BUG: "title=sam OR title=star AND platform=windows" filter doesn't work as expected (should return windows games with "sam" or "star" in the title)
