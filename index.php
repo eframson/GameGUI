@@ -63,7 +63,7 @@
 		- Clean up tab display logic
 		
 		BUGS
-		- BUG: "title=sam OR title=star AND platform=windows" filter doesn't work as expected (should return windows games with "sam" or "star" in the title)
+
 	-->
 	<body>
 		<div class="navbar navbar-inverse navbar-fixed-top" role="navigation">
@@ -82,14 +82,14 @@
 		  </div>
 		</div>
 
-		<!-- Modal -->
+		<!-- start Modals section -->
 		<div class="modal fade" id="myModal" tabindex="-1" role="dialog" aria-labelledby="myModalLabel" aria-hidden="true">
 		  <div class="modal-dialog">
 
 		    <div class="modal-content massupdate">
 			    <div class="modal-header">
 			        <button type="button" class="close" data-bind="click: hideModal"><span aria-hidden="true">&times;</span><span class="sr-only">Close</span></button>
-			        <h4 class="modal-title" id="myModalLabel">Mass Update</h4>
+			        <h4 class="modal-title">Mass Update</h4>
 			    </div>
 				<div class="modal-body">
 					<div class="ajax-notice" data-bind="css: $root.messageClass, showMessage: $root.activeMessage()"></div>
@@ -149,7 +149,7 @@
 			<div data-bind="with: newGame" class="modal-content newgame">
 		      <div class="modal-header">
 		        <button type="button" class="close" data-bind="click: $root.hideModal"><span aria-hidden="true">&times;</span><span class="sr-only">Close</span></button>
-		        <h4 class="modal-title" id="myModalLabel">Create New Game</h4>
+		        <h4 class="modal-title">Create New Game</h4>
 		      </div>
 		      <div class="modal-body">
 				<div class="ajax-notice" data-bind="css: $root.messageClass, showMessage: $root.activeMessage()"></div>
@@ -190,7 +190,7 @@
 			<div data-bind="with: currentGame" class="current-game modal-content editgame">
 				<div class="modal-header">
 			        <button type="button" class="close" data-bind="click: $root.hideModal"><span aria-hidden="true">&times;</span><span class="sr-only">Close</span></button>
-			        <h4 class="modal-title" id="myModalLabel">Edit Game</h4>
+			        <h4 class="modal-title">Edit Game</h4>
 		      	</div>
 		      	<div class="modal-body">
 		      		<div class="ajax-notice" data-bind="css: $root.messageClass, showMessage: $root.activeMessage()"></div>
@@ -267,7 +267,7 @@
 			<div class="modal-content filter-instructions">
 			    <div class="modal-header">
 			        <button type="button" class="close" data-bind="click: hideModal"><span aria-hidden="true">&times;</span><span class="sr-only">Close</span></button>
-			        <h4 class="modal-title" id="myModalLabel">How To Use Filters</h4>
+			        <h4 class="modal-title">How To Use Filters</h4>
 			    </div>
 				<div class="modal-body">
 					<p>Some examples:</p>
@@ -310,6 +310,38 @@
 				<!--<div class="modal-footer">
 				</div>-->
 		    </div>
+
+			<div class="modal-content mass-merge">
+			    <div class="modal-header">
+			        <button type="button" class="close" data-bind="click: hideModal"><span aria-hidden="true">&times;</span><span class="sr-only">Close</span></button>
+			        <h4 class="modal-title">Merge Games</h4>
+			    </div>
+				<div class="modal-body">
+						<form>
+							<div data-bind="foreach: $root.massMergeFields()">
+								<div>
+									<h4 data-bind="text: label"></h4>
+									<!-- ko foreach: options -->
+										<div>
+											<input type="radio" data-bind="attr: { name: $parent.name }, value: value"/>
+											<label data-bind="text: label"></label>
+										</div>
+									<!-- /ko -->
+									<div data-bind="visible: showFillIn == true">
+										<input type="radio" data-bind="attr: { name: $parent.name }" value="other"/>
+										<input type="text" class="form-control" placeholder="Other"/>
+									</div>
+								</div>
+							</div>
+						</form>
+				</div>
+				<div class="modal-footer">
+					<button type="button" class="btn btn-default" data-bind="click: hideModal">Cancel</button>
+					<button type="button" class="btn btn-primary" data-bind="click: massMerge, text: 'Merge ' + selectedGames().length + ' game(s)'"></button>
+				</div>
+		    </div>
+		    <!-- end Modals section -->
+
 
 		  </div>
 		</div>
@@ -365,6 +397,13 @@
 								<button type="button" class="btn btn-danger" data-bind="click: massDelete, text: 'Delete ' + selectedGames().length + ' game(s)'"></button>
 								<button type="button" class="btn btn-default" data-target="massupdate" data-bind="click: triggerModal">Mass Update</button>
 								<button type="button" class="btn btn-default" data-bind="click: clearSelection">Clear Selection</button>
+								<div class="dropdown">
+									<button id="show-extra-mass-opts" type="button" class="btn btn-default glyphicon glyphicon-th-list show-extra-mass-opts" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false" data-bind="visible: selectedGames().length > 1"></button>
+									<ul class="dropdown-menu" role="menu" aria-labelledby="show-extra-mass-opts">
+										<li role="presentation" class="dropdown-header">Other Actions</li>
+										<li role="presentation"><a role="menuitem" tabindex="-1" href="#" data-target="mass-merge" data-bind="click: triggerModal">Merge Games</a></li>
+									</ul>
+								</div>
 							</div>
 						</div>
 					</div>

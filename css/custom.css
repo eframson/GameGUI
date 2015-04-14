@@ -171,6 +171,20 @@ button:focus {
 	margin-right: -8px;
 }
 
+.all-games .table-meta div.mass-actions .dropdown {
+	display: inline-block;
+}
+
+.all-games .table-meta div.mass-actions .dropdown .dropdown-header {
+	text-transform: uppercase;
+}
+
+.all-games .table-meta div.mass-actions .show-extra-mass-opts {
+	top: 0px;
+	font-size: 18px;
+	padding: 4px 12px 3px 12px;
+}
+
 .all-games .row:not(:last-child) {
 	padding: 10px 0;
 	border-bottom: solid #636363 1px;

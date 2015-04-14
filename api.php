@@ -23,6 +23,7 @@
 
 	$app->put('/games', 'updateGame');
 	$app->put('/games/', 'updateGame');
+	$app->put('/games/merge', 'mergeGames');
 
 	$app->delete('/games/:id',	'deleteGame');
 
@@ -151,6 +152,76 @@
 	
 	function updateGame(){
 
+		$gameData = getRequestBody();
+		//print_r($gameData);
+
+		if($gameData == null || count($gameData) == 0){
+			showResponse("fail", array(), "No data received");
+		}else{
+
+			//Get an array of the IDs of the games we want to update
+			$ids = array_map(function($game){
+				return $game["id"];
+			}, $gameData);
+
+			//Init some arrays
+			$result_array = array();
+			$indexedGames = array();
+
+			try{
+				//Retrieve an array of game objects from the DB
+				$games = Model::factory('GameEntity')->where_in('id', $ids)->find_many($ids);
+
+				//Create arrays of DB and frontend response data indexed by game ID
+				foreach( $games as $game ){
+					$indexedGames[$game->id] = $game;
+					$result_array["games"][$game->id] = 0;
+				}
+
+				//For each game present in the update array
+				foreach ($gameData as $id => $data) {
+
+					//Retrieve the appropriate game object
+					$game = $indexedGames[$data["id"]];
+					
+					//For each property in the game update array
+					foreach ($data as $prop => $value) {
+						
+						if($prop == "id" || $prop == "selected"){
+							continue;
+						}
+						if($prop == "date_created"){
+							$date_parts = date_parse($value);
+
+    						$value = $date_parts["year"] . "-" . $date_parts["month"] . "-" . $date_parts["day"]
+    						. " " . ($date_parts["hour"] ? $date_parts["hour"] : "00")
+    						. ":" . ($date_parts["minute"] ? $date_parts["minute"] : "00")
+    						. ":" . ($date_parts["second"] ? $date_parts["second"] : "00");
+
+						}
+						if($value == "<DELETE>"){
+							$value = null;
+						}
+						$game->$prop = $value;
+					}
+
+					$game->save();
+					$result_array["games"][$game->id] = $game->as_array();
+				}
+
+				showResponse("success", $result_array);
+
+			}catch(Exception $e){
+				$hadErrorsFlag = true;
+				showResponse("error", $result_array, $e->getMessage());
+			}
+		}
+
+	}
+
+	function mergeGames(){
+
+		die("Nobody's finished me yet!");
 		$gameData = getRequestBody();
 		//print_r($gameData);
 

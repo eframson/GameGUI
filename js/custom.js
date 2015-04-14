@@ -32,14 +32,8 @@ var Games = function() {
 		self.activeRequests = ko.observable(0);
 		self.listMode = ko.observable("all");
 		self.filteredList = ko.observableArray();
-		self.filterNullTerm = "NULL";
-		self.filterEmptyTerm = "EMPTY";
-		self.validOperatorsRegEx = "!=|=|>|<|<=|>=|HAS|~=";
-		self.orTermsRegEx = "OR|\\|\\|";
-		self.andTermsRegEx = "AND|&&";
 
 		self.currentGameCancelData = Array();
-		self.modalIsShown = false;
 		self.activeMessageType = ko.observable("info");
 		self.activeMessage = ko.observable("");
 
@@ -146,6 +140,12 @@ var Games = function() {
 		}, self);
 	}
 
+	this.modalIsShown = false;
+	this.filterNullTerm = "NULL";
+	this.filterEmptyTerm = "EMPTY";
+	this.validOperatorsRegEx = "!=|=|>|<|<=|>=|HAS|~=";
+	this.orTermsRegEx = "OR|\\|\\|";
+	this.andTermsRegEx = "AND|&&";
 	this.operators = {
 		//"!=|=|>|<|=<|>=";
 		'=' : function(a, b){
@@ -412,6 +412,24 @@ var Games = function() {
 
 		self.updateGame(massUpdateData);
 	}
+
+	this.massMerge = function(viewModel, event){
+
+		var massUpdateData = Array();
+
+		$.each(self.selectedGames(), function(idx, elem){
+			var game = ko.mapping.toJS(elem);
+			
+			$.each(self.massUpdateData(), function(prop, value){
+				game[prop] = value;
+			});
+
+			massUpdateData.push(game);
+		});
+
+		console.log(massUpdateData);
+		//self.updateGame(massUpdateData);
+	}
 	
 	$('.search').autocomplete({
 		source: function( request, response ){
@@ -518,6 +536,28 @@ var Games = function() {
 			tabTarget = elem.getAttribute("href").replace(/^#/, '');
 		window.location.hash = tabTarget;
 		self.activeTab(tabTarget);
+	}
+
+	this.massMergeFields = function(){
+		var myarray = Array(
+			{
+				name : 'title',
+				label : 'Some Field',
+				options: [
+					{
+						value : 123,
+						label : '123',
+					},
+					{
+						value : 456,
+						label : '45678',
+					},
+				],
+				showFillIn : true
+			}
+		);
+		console.log(myarray);
+		return myarray;
 	}
 	
 	this.editGameFromList = function(game, event){
