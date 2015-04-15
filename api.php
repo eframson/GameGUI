@@ -23,6 +23,7 @@
 
 	$app->put('/games', 'updateGame');
 	$app->put('/games/', 'updateGame');
+
 	$app->put('/games/merge', 'mergeGames');
 
 	$app->delete('/games/:id',	'deleteGame');
@@ -170,7 +171,7 @@
 
 			try{
 				//Retrieve an array of game objects from the DB
-				$games = Model::factory('GameEntity')->where_in('id', $ids)->find_many($ids);
+				$games = Model::factory('GameEntity')->where_in('id', $ids)->find_many();
 
 				//Create arrays of DB and frontend response data indexed by game ID
 				foreach( $games as $game ){
@@ -221,46 +222,44 @@
 
 	function mergeGames(){
 
-		die("Nobody's finished me yet!");
 		$gameData = getRequestBody();
 		//print_r($gameData);
 
 		if($gameData == null || count($gameData) == 0){
 			showResponse("fail", array(), "No data received");
+		}elseif( !array_key_exists("id", $gameData) || !array_key_exists("ids_to_merge", $gameData) ){
+			showResponse("fail", array(), "Target and original IDs must be specified");
 		}else{
-
-			//Get an array of the IDs of the games we want to update
-			$ids = array_map(function($game){
-				return $game["id"];
-			}, $gameData);
 
 			//Init some arrays
 			$result_array = array();
-			$indexedGames = array();
 
 			try{
-				//Retrieve an array of game objects from the DB
-				$games = Model::factory('GameEntity')->where_in('id', $ids)->find_many($ids);
 
-				//Create arrays of DB and frontend response data indexed by game ID
-				foreach( $games as $game ){
-					$indexedGames[$game->id] = $game;
-					$result_array["games"][$game->id] = 0;
+				//If we're updating an existing game, make sure it doesn't get deleted
+				if( ($key = array_search($gameData["id"], $gameData["ids_to_merge"])) !== false){
+					unset($gameData["ids_to_merge"][$key]);
 				}
 
-				//For each game present in the update array
-				foreach ($gameData as $id => $data) {
+				//Retrieve an array of game objects from the DB
+				$existing_games = Model::factory('GameEntity')->where_in('id', $gameData["ids_to_merge"])->find_many();
+				if($gameData["id"] == "NEW"){
+					$target_game = Model::factory('GameEntity')->create();
+				}else{
+					$target_game = Model::factory('GameEntity')->where('id', $gameData["id"])->find_one();
+				}
 
-					//Retrieve the appropriate game object
-					$game = $indexedGames[$data["id"]];
-					
-					//For each property in the game update array
-					foreach ($data as $prop => $value) {
-						
-						if($prop == "id" || $prop == "selected"){
+				if($target_game == false){
+					showResponse("fail", array(), "Did not receive a valid target ID");
+				}else{
+
+					//For each property we received, set it on our target game
+					foreach ($gameData as $field => $value) {
+							
+						if($field == "id" || $field == "selected" || $field == "ids_to_merge"){
 							continue;
 						}
-						if($prop == "date_created"){
+						if($field == "date_created"){
 							$date_parts = date_parse($value);
 
     						$value = $date_parts["year"] . "-" . $date_parts["month"] . "-" . $date_parts["day"]
@@ -269,17 +268,26 @@
     						. ":" . ($date_parts["second"] ? $date_parts["second"] : "00");
 
 						}
-						if($value == "<DELETE>"){
+						if($value == "EMPTY"){
 							$value = null;
 						}
-						$game->$prop = $value;
+						$target_game->$field = $value;
+						
 					}
 
-					$game->save();
-					$result_array["games"][$game->id] = $game->as_array();
-				}
+					$target_game->save();
+					$result_array["games"][$target_game->id] = $target_game->as_array();
 
-				showResponse("success", $result_array);
+					foreach( $existing_games as $game ){
+						$existing_id = $game->id;
+						$response = $game->delete();
+						if($response){
+							$result_array["games"][$existing_id] = null;
+						}
+					}
+
+					showResponse("success", $result_array);
+				}
 
 			}catch(Exception $e){
 				$hadErrorsFlag = true;

@@ -309,6 +309,26 @@ button:focus {
 	margin-bottom: 0px;
 }
 
+.mass-merge .modal-body .merge-field {
+	margin-top: 15px;
+	display: block;
+}
+
+.mass-merge .modal-body .merge-field h4{
+	margin: 0;
+}
+
+.mass-merge .modal-body .merge-fill-in {
+	float: left;
+	display: block;
+	width: auto;
+}
+
+.mass-merge .modal-body input[type='text'].merge-fill-in {
+	margin-left: 5px;
+	width: 300px;
+}
+
 .form-group:not(:last-child){
 	margin-bottom: 20px;
 }

@@ -140,6 +140,7 @@ var Games = function() {
 		}, self);
 	}
 
+	this.columnsInOrder = Array();
 	this.modalIsShown = false;
 	this.filterNullTerm = "NULL";
 	this.filterEmptyTerm = "EMPTY";
@@ -191,30 +192,37 @@ var Games = function() {
 
 	this.initOverviewDataStore = function(){
 
-			self.ajax({
-				dataType: "json",
-				url: 'api.php/games/',
-				success: function(response){
-					response = new Response(response);
+		self.ajax({
+			dataType: "json",
+			url: 'api.php/games/',
+			success: function(response){
+				response = new Response(response);
 
-					if(response.isSuccess()){
+				if(response.isSuccess()){
 
-						$.each(response.getData().games, function(idx, elem){
-							elem.selected = false;
-							elem = ko.mapping.fromJS(elem);
-							response.getData().games[idx] = elem;
-						});
-						self.overviewDataStore(response.getData().games);
+					$.each(response.getData().games, function(idx, elem){
+						elem.selected = false;
+						elem = ko.mapping.fromJS(elem);
+						response.getData().games[idx] = elem;
+					});
+					self.overviewDataStore(response.getData().games);
 
-					}else{
-						self.mostRecentAjaxFailure("Could not retrieve overviewDataStore: " + response.getErrorMsg());
-					}
-				},
-				complete: function(jqXHR, textStatus){
-					self.activeRequests( self.activeRequests() - 1 );
-					self.showLoading(0);
+					self.columnsInOrder = Object.keys(response.getData().games[0]);
+					self.columnsInOrder = self.columnsInOrder.filter(function(val, idx){
+						if(val == "selected" || val == "__ko_mapping__"){
+							return false;
+						}
+						return true;
+					});
+
+				}else{
+					self.mostRecentAjaxFailure("Could not retrieve overviewDataStore: " + response.getErrorMsg());
 				}
-			});
+			},
+			complete: function(jqXHR, textStatus){
+				self.showLoading(0);
+			}
+		});
 
 	}
 
@@ -415,20 +423,89 @@ var Games = function() {
 
 	this.massMerge = function(viewModel, event){
 
-		var massUpdateData = Array();
+		var elem = event.target,
+			$elem = $(elem)
+			form = $elem.parents("form"),
+			formData = form.serializeArray(),
+			submitFields = Array(),
+			otherFields = {},
+			postData = {};
 
-		$.each(self.selectedGames(), function(idx, elem){
-			var game = ko.mapping.toJS(elem);
-			
-			$.each(self.massUpdateData(), function(prop, value){
-				game[prop] = value;
-			});
-
-			massUpdateData.push(game);
+		submitFields = formData.filter(function(elem, idx){
+			if(elem.name.match(/-other$/)){
+				otherFields[elem.name] = elem.value;
+				return false;
+			}
+			return true;
 		});
 
-		console.log(massUpdateData);
-		//self.updateGame(massUpdateData);
+		for(i=0; i < submitFields.length; i++){
+			if(submitFields[i].value.match(/-other$/)){
+				submitFields[i].value = otherFields[submitFields[i].value];
+			}
+			submitFields[i].value = (submitFields[i].value == "NULL") ? undefined : submitFields[i].value ;
+
+			postData[submitFields[i].name] = submitFields[i].value;
+		}
+
+		postData["ids_to_merge"] = self.selectedGames().map(function(elem, idx){
+			return elem.id();
+		});
+
+		var postData = JSON.stringify(postData);
+
+		self.ajax({
+			type: 'PUT',
+			contentType: 'application/json',
+			url: 'api.php/games/merge',
+			dataType: "json",
+			data: postData,
+			success: function(response, textStatus, jqXHR){
+				response = new Response(response);
+
+				if(response.getData() && response.getData().games){
+					
+					$.each(response.getData().games, function(id, val){
+						var gameToUpdate = undefined;
+
+						if(val != undefined){
+							gameToUpdate = self.getGameById(val.id);
+
+							if(gameToUpdate){
+
+								$.each(val, function(prop, value){
+									gameToUpdate[prop](value);
+								});
+
+							}else{
+								val.selected = false;
+								var game = ko.mapping.fromJS( $.extend(self.createNewEmptyGame(), val));
+
+								self.addGameToLocalObjects(game);
+							}
+						}else if (val == undefined){
+							gameToUpdate = self.getGameById(id);
+							self.removeGameFromLocalObjects(gameToUpdate);
+						}
+
+					});
+
+					self.applySortingToDataStore();
+				}
+				
+				if(response.isSuccess()){
+
+					self.hideModal();
+					self.mostRecentAjaxSuccess("All games merged successfully");
+
+				}else{
+					console.log(response);
+					self.mostRecentAjaxFailure(response.getErrorMsg());
+				}
+
+			},
+			error: self.standardOnFailureHandler
+		});
 	}
 	
 	$('.search').autocomplete({
@@ -539,25 +616,57 @@ var Games = function() {
 	}
 
 	this.massMergeFields = function(){
-		var myarray = Array(
-			{
-				name : 'title',
-				label : 'Some Field',
-				options: [
-					{
-						value : 123,
-						label : '123',
-					},
-					{
-						value : 456,
-						label : '45678',
-					},
-				],
-				showFillIn : true
+		var dataByField = {},
+			mergeFields = Array();
+
+		$.each(self.selectedGames(), function(idx, game){
+
+			var jsGameObj = ko.mapping.toJS(game);
+
+			//self.columnsInOrder
+
+			for(i=0; i < self.columnsInOrder.length; i++){
+				var prop = self.columnsInOrder[i];
+
+				if(dataByField[prop] == undefined){
+					dataByField[prop] = {};
+				}
+
+				dataByField[prop][jsGameObj.id] = jsGameObj[prop];
 			}
-		);
-		console.log(myarray);
-		return myarray;
+		});
+
+		$.each(dataByField, function(fieldName, fieldValues){
+			var mergeField = {};
+
+			mergeField.name = fieldName;
+			//For now these are just going to be the same thing
+			mergeField.label = fieldName;
+			mergeField.options = Array();
+
+			$.each(fieldValues, function(gameId, valueOption){
+				//These will also be the same thing for now
+				if(valueOption && valueOption != ''){
+					mergeField.options.push( {
+						value: valueOption,
+						label: valueOption,
+						id : fieldName + "-" + gameId,
+					} );
+				}
+			});
+			if(fieldName != "id"){
+				mergeField.options.push( { value: 'EMPTY', label: 'NULL', id: fieldName + '-empty' } );
+				mergeField.options.push( { value: 'NULL', label: 'Ignored', id: fieldName + '-null' } );
+				mergeField.showFillIn = true;
+			}else{
+				mergeField.options.push( { value: 'NEW', label: '<New game>', id: fieldName + '-new' } );
+				mergeField.showFillIn = false;
+			}
+
+			mergeFields.push(mergeField);
+		});
+
+		return mergeFields;
 	}
 	
 	this.editGameFromList = function(game, event){
@@ -670,7 +779,6 @@ var Games = function() {
 
 	this.updateSelected = function(game, event){
 
-		console.log(game);
     	//Is there a slicker/better way of doing this?
     	self.getAppropriateDataStore().notifySubscribers(ko.unwrap(self.getAppropriateDataStore()));
     	//This is essential for the default checked behavior to continue
@@ -854,8 +962,14 @@ var Games = function() {
 	this.removeGameFromLocalObjects = function(games){
 		if( games instanceof Array ){
 			self.overviewDataStore.removeAll(games);
+			if (self.listMode() == "filter"){
+				self.filteredList.removeAll(games);
+			}
 		}else{
 			self.overviewDataStore.remove(games);
+			if (self.listMode() == "filter"){
+				self.filteredList.remove(games);
+			}
 		}
 	}
 
@@ -863,9 +977,23 @@ var Games = function() {
 		self.overviewDataStore.push(game);
 	}
 
+	this.selectPrecedingRadioButton = function(viewModel, event){
+		var elem = event.target,
+			$elem = $(elem)
+			$radio = $elem.prev("input[type='radio']");
+		if($radio.length){
+			$radio.prop("checked", true);
+		}
+	}
+
 	this.ajax = function(ajaxOpts){
-		ajaxOpts.complete = ajaxOpts.complete || function(jqXHR, textStatus){
+		var completeCallback = ajaxOpts.complete;
+		ajaxOpts.complete = function(jqXHR, textStatus){
 			self.activeRequests( self.activeRequests() - 1 );
+
+			if(typeof completeCallback === 'function'){
+				completeCallback(jqXHR, textStatus);
+			}
 		}
 		self.activeRequests( self.activeRequests() + 1 );
 		$.ajax(ajaxOpts);
@@ -996,6 +1124,10 @@ var Games = function() {
 			}
 		}
 		return false;
+	}
+
+	this._getDisplayFieldsOfGameInOrder = function(game){
+		//Hmmmm....
 	}
 
 	this.createNewEmptyGame = function(){

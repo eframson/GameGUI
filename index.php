@@ -37,7 +37,7 @@
 		
 		NEW FEATURES
 		- To-play list management tab + mini-display on frontend
-		- Add ability to merge games
+		- Preferences tab (# per page, etc.)
 		- Dynamic syntax highlighting for filter queries
 		- Show a user-friendly string translation of the filter string
 			IDEA:
@@ -47,22 +47,27 @@
 				AT LEAST ONE of the following must be true:
 					- playability_rating EQUALS 4
 		- Store page number separately for filtered vs non-filtered results (?)
+		- Allow for multiple AJAX messages in quick succession instead of immediately replacing the value of any currently displayed message
+		- Normalize storage of sources (+ source IDs) and platforms
 
 		GUI IMPROVEMENTS
+		- Prevent entire page from moving down when AJAX message is displayed
 		- Make single-game update success message unique from mass update
 		- Allow read-only fields to be filled out if empty, otherwise readonly
 		- Re-apply filter on game data update?
 		- Show loader icon in homepage sections while content is loading
 		- Re-sort list on partially successful mass update
 		- Add loading indicator when mass update modal is submitted
-		- Expand filter syntax instructions
+		- Update/expand filter syntax instructions
 		- Add blue highlights to "pencil" edit button, and red highlighting to trash can icon
 		- Maybe add highlighting to select boxes? Possibly change "selected" color to blue?
 
 		CODE IMPROVEMENTS
 		- Clean up tab display logic
+		- Give better names to functions involved in filtering process
 		
 		BUGS
+		- AJAX response message displays twice? (How to reproduce?)
 
 	-->
 	<body>
@@ -316,29 +321,32 @@
 			        <button type="button" class="close" data-bind="click: hideModal"><span aria-hidden="true">&times;</span><span class="sr-only">Close</span></button>
 			        <h4 class="modal-title">Merge Games</h4>
 			    </div>
-				<div class="modal-body">
-						<form>
+				<form id="massUpdateValues">
+					<div class="modal-body">
+						<div class="ajax-notice" data-bind="css: $root.messageClass, showMessage: $root.activeMessage()"></div>
+						<p>Choose what field values the resulting merged game will have:</p>
 							<div data-bind="foreach: $root.massMergeFields()">
-								<div>
+								<div class="merge-field">
 									<h4 data-bind="text: label"></h4>
 									<!-- ko foreach: options -->
 										<div>
-											<input type="radio" data-bind="attr: { name: $parent.name }, value: value"/>
-											<label data-bind="text: label"></label>
+											<input type="radio" data-bind="attr: { name: $parent.name, checked: ( $parent.name != 'id' && value == 'NULL' ) ? 'checked' : false, id: id }, value: value"/>
+											<label data-bind="attr: { for: id }, text: label"></label>
 										</div>
 									<!-- /ko -->
 									<div data-bind="visible: showFillIn == true">
-										<input type="radio" data-bind="attr: { name: $parent.name }" value="other"/>
-										<input type="text" class="form-control" placeholder="Other"/>
+										<input class="merge-fill-in" type="radio" data-bind="attr: { name: name, id: name + '-other' } , value: name + '-other'"/>
+										<input type="text" class="form-control merge-fill-in" placeholder="Other" data-bind='attr: { name: name + "-other" }, click: $root.selectPrecedingRadioButton'/>
+										<div class="clear"></div>
 									</div>
 								</div>
 							</div>
-						</form>
-				</div>
-				<div class="modal-footer">
-					<button type="button" class="btn btn-default" data-bind="click: hideModal">Cancel</button>
-					<button type="button" class="btn btn-primary" data-bind="click: massMerge, text: 'Merge ' + selectedGames().length + ' game(s)'"></button>
-				</div>
+					</div>
+					<div class="modal-footer">
+						<button type="button" class="btn btn-default" data-bind="click: hideModal">Cancel</button>
+						<button type="button" class="btn btn-primary" data-bind="click: massMerge, text: 'Merge ' + selectedGames().length + ' game(s)'"></button>
+					</div>
+				</form>
 		    </div>
 		    <!-- end Modals section -->
 
