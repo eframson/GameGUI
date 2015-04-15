@@ -2,6 +2,10 @@
 	require_once('lib/idiorm.php');
 	require_once('lib/paris.php');
 	require_once('classes/GameEntity.php');
+	require_once('classes/Platform.php');
+	require_once('classes/Source.php');
+	require_once('classes/GameEntityPlatform.php');
+	require_once('classes/GameEntitySource.php');
 	
 	require_once('lib/Slim/Slim.php');
 	\Slim\Slim::registerAutoloader();
@@ -18,13 +22,15 @@
 	$app->get('/games/', 'getAllGames');
 
 	$app->get('/games/:id',	'getGamesByIds');
+
+	$app->get('/games/test/', 'gameTest');
 	
 	$app->post('/games', 'addGame');
 
 	$app->put('/games', 'updateGame');
 	$app->put('/games/', 'updateGame');
 
-	$app->put('/games/merge', 'mergeGames');
+	$app->put('/games/merge/', 'mergeGames');
 
 	$app->delete('/games/:id',	'deleteGame');
 
@@ -79,6 +85,15 @@
 				showResponse("error", array(), $e->getMessage());
 			}
 		}
+	}
+
+	function gameTest(){
+		$game = Model::factory('GameEntity')->where('id', 1)->find_one();
+		$sources = $game->sources()->find_many();
+		$platforms = $game->platforms()->find_many();
+		//print_r($game);
+		//print_r($sources);
+		print_r($platforms);
 	}
 	
 	function addGame(){

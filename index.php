@@ -36,8 +36,11 @@
 	<!-- @TODOs
 		
 		NEW FEATURES
-		- To-play list management tab + mini-display on frontend
-		- Preferences tab (# per page, etc.)
+		- To-play list management tab + mini-display on frontend (field: to_play_order)
+		- Add "dump" button to output a JSON version of all games (to make cross-system backup compares easier)
+		- Notes box on homepage
+		- Use Select2s for source/platform entry
+		- Preferences tab/UI (# per page, etc.)
 		- Dynamic syntax highlighting for filter queries
 		- Show a user-friendly string translation of the filter string
 			IDEA:
