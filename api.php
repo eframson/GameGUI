@@ -1,11 +1,11 @@
 <?php
 	require_once('lib/idiorm.php');
 	require_once('lib/paris.php');
+	require_once('classes/CustomIdiorm.php');
+	require_once('classes/CustomModel.php');
 	require_once('classes/GameEntity.php');
 	require_once('classes/Platform.php');
 	require_once('classes/Source.php');
-	require_once('classes/GameEntityPlatform.php');
-	require_once('classes/GameEntitySource.php');
 	
 	require_once('lib/Slim/Slim.php');
 	\Slim\Slim::registerAutoloader();
@@ -22,6 +22,9 @@
 	$app->get('/games/', 'getAllGames');
 
 	$app->get('/games/:id',	'getGamesByIds');
+
+	$app->get('/sources/', 'getAllSources');
+	$app->get('/platforms/', 'getAllPlatforms');
 
 	$app->get('/games/test/', 'gameTest');
 	
@@ -40,15 +43,9 @@
 	
 	function getAllGames(){
 		try{
-			//$results should be an array of GameEntity objects
-			$results = Model::factory('GameEntity')
-					->order_by_asc('title')
-					->find_many();
 
 			$data = array();
-			foreach($results as $idx => $game){
-				$data["games"][] = $game->as_array();
-			}
+			$data["games"] = getAll("GameEntity", "title");
 
 			showResponse("success", $data);
 		}catch(Exception $e){
@@ -89,11 +86,8 @@
 
 	function gameTest(){
 		$game = Model::factory('GameEntity')->where('id', 1)->find_one();
-		$sources = $game->sources()->find_many();
-		$platforms = $game->platforms()->find_many();
-		//print_r($game);
-		//print_r($sources);
-		print_r($platforms);
+		//$game->sources(2);
+		$game->platforms(array(1,2,3));
 	}
 	
 	function addGame(){
@@ -167,7 +161,7 @@
 	}
 	
 	function updateGame(){
-
+		die("testing");
 		$gameData = getRequestBody();
 		//print_r($gameData);
 
@@ -310,6 +304,45 @@
 			}
 		}
 
+	}
+
+	
+	function getAllSources(){
+		try{
+
+			$data = array();
+			$data["sources"] = getAll("Source");
+
+			showResponse("success", $data);
+		}catch(Exception $e){
+			showResponse("error", array(), $e->getMessage());
+		}
+	}
+
+	function getAllPlatforms(){
+		try{
+
+			$data = array();
+			$data["platforms"] = getAll("Platform");
+
+			showResponse("success", $data);
+		}catch(Exception $e){
+			showResponse("error", array(), $e->getMessage());
+		}
+	}
+
+	function getAll($class_name, $sort_field = "id"){
+
+		$results = Model::factory($class_name)
+				->order_by_asc($sort_field)
+				->find_many();
+
+		$data = array();
+		foreach($results as $idx => $obj){
+			$data[] = $obj->as_array();
+		}
+
+		return $data;
 	}
 
 	function showResponse($status, $data, $message = null, $code = null){

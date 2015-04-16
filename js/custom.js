@@ -13,6 +13,8 @@ var Games = function() {
 		self.activeTab = ko.observable("");
 		self.gameList = ko.observableArray();
 		self.overviewDataStore = ko.observableArray();
+		self.platformsDataStore = ko.observableArray();
+		self.sourcesDataStore = ko.observableArray();
 		self.showLoading = ko.observable(1);
 		self.allSelected = ko.observable(0);
 		self.massUpdateData = ko.observable({
@@ -190,12 +192,20 @@ var Games = function() {
 		},
 	}
 
+	this.init = function(){
+		self.initOverviewDataStore();
+		self.initPlatforms();
+		self.initSources();
+	}
+
 	this.initOverviewDataStore = function(){
 
 		self.ajax({
 			dataType: "json",
 			url: 'api.php/games/',
 			success: function(response){
+				var debug = jQuery.extend(true, {}, response);
+				console.log(debug);
 				response = new Response(response);
 
 				if(response.isSuccess()){
@@ -221,6 +231,44 @@ var Games = function() {
 			},
 			complete: function(jqXHR, textStatus){
 				self.showLoading(0);
+			}
+		});
+
+	}
+
+	this.initPlatforms = function(){
+
+		self.ajax({
+			dataType: "json",
+			url: 'api.php/platforms/',
+			success: function(response){
+				response = new Response(response);
+
+				if(response.isSuccess()){
+					self.platformsDataStore(response.getData().platforms);
+				}else{
+					self.mostRecentAjaxFailure("Could not retrieve list of platforms: " + response.getErrorMsg());
+				}
+				
+			}
+		});
+
+	}
+
+	this.initSources = function(){
+
+		self.ajax({
+			dataType: "json",
+			url: 'api.php/sources/',
+			success: function(response){
+				response = new Response(response);
+
+				if(response.isSuccess()){
+					self.sourcesDataStore(response.getData().sources);
+				}else{
+					self.mostRecentAjaxFailure("Could not retrieve list of sources: " + response.getErrorMsg());
+				}
+				
 			}
 		});
 
@@ -253,7 +301,6 @@ var Games = function() {
 				}
 
 			},
-			error: self.standardOnFailureHandler
 		});
 	}
 
@@ -269,7 +316,7 @@ var Games = function() {
 			return;
 		}
 
-		self.ajax({
+		var ajaxOpts = {
 			type: 'DELETE',
 			contentType: 'application/json',
 			url: 'api.php/games/' + gameIds,
@@ -295,14 +342,13 @@ var Games = function() {
 
 				}
 			},
-			error: function(jqXHR, textStatus, errorThrown){
-				if(typeof onFailure === 'function'){
-					onFailure(jqXHR, textStatus, errorThrown);
-				}else{
-					self.standardOnFailureHandler(jqXHR, textStatus, errorThrown);
-				}
-			}
-		});
+		};
+
+		if(typeof onFailure === 'function'){
+			ajaxOpts.error = onFailure;
+		}
+
+		self.ajax(ajaxOpts);
 	}
 	
 	this.massDelete = function(viewModel, event){
@@ -400,7 +446,6 @@ var Games = function() {
 				}
 
 			},
-			error: self.standardOnFailureHandler
 		});
 	}
 	
@@ -504,7 +549,6 @@ var Games = function() {
 				}
 
 			},
-			error: self.standardOnFailureHandler
 		});
 	}
 	
@@ -528,7 +572,7 @@ var Games = function() {
 				}
 			);*/
 
-			response($.map(self.getFilteredDataStore("title" + self.filterFieldSplitTerm + request.term + self.filterOrTerm + "source" + self.filterFieldSplitTerm + request.term), function( game ){
+			response($.map(self.getFilteredDataStore("title HAS " + request.term + " OR source HAS " + request.term), function( game ){
 				return {
 					label: game.title() + " (" + game.source() + ")",
 					value: game.id()
@@ -684,10 +728,20 @@ var Games = function() {
 					ko.mapping.fromJS(response.getData().games[0], game);
 
 					self.currentGame(game);
+					$(".modal-content.editgame .form-group input.platform").tagEditor({
+						autocomplete: {
+							source: $.map(self.platformsDataStore(),function(platform){ return platform.name })
+						},
+					});
+					$(".modal-content.editgame .form-group input.source").tagEditor({
+						autocomplete: {
+							source: $.map(self.sourcesDataStore(),function(source){ return source.name })
+						},
+					});
 					self.showModal("editgame");
+
 				}
 			},
-			error: self.standardOnFailureHandler
 		});
 
 	}
@@ -987,6 +1041,7 @@ var Games = function() {
 	}
 
 	this.ajax = function(ajaxOpts){
+		
 		var completeCallback = ajaxOpts.complete;
 		ajaxOpts.complete = function(jqXHR, textStatus){
 			self.activeRequests( self.activeRequests() - 1 );
@@ -995,18 +1050,24 @@ var Games = function() {
 				completeCallback(jqXHR, textStatus);
 			}
 		}
+
+		var errorCallback = ajaxOpts.error;
+		ajaxOpts.error = function(jqXHR, textStatus, errorThrown){
+			self.activeRequests( self.activeRequests() - 1 );
+
+			var http_code = jqXHR.status,
+				http_code_text = jqXHR.statusText,
+				error_msg = jqXHR.responseText;
+			self.mostRecentAjaxFailure(http_code + ' ' + http_code_text + '. See console for details');
+			console.log(error_msg);
+
+			if(typeof errorCallback === 'function'){
+				errorCallback(jqXHR, textStatus, errorThrown);
+			}
+		}
+
 		self.activeRequests( self.activeRequests() + 1 );
 		$.ajax(ajaxOpts);
-	}
-
-	this.standardOnFailureHandler = function(jqXHR, textStatus, errorThrown){
-
-		var http_code = jqXHR.status,
-			http_code_text = jqXHR.statusText,
-			error_msg = jqXHR.responseText;
-		self.mostRecentAjaxFailure(http_code + ' ' + http_code_text + '. See console for details');
-		console.log(error_msg);
-
 	}
 
 	//Expects a termString like "bar", "foo=bar", "foo > bar", etc.
@@ -1164,18 +1225,20 @@ var Games = function() {
 	}
 
 	this.mostRecentAjaxFailure = function(messageString){
-		self.displayMessage(messageString, "danger");
+		self.displayMessage(messageString, "error");
 	}
 
 	this.mostRecentAjaxSuccess = function(messageString){
-		self.displayMessage(messageString, "success");
+		self.displayMessage(messageString, "notice");
 	}
 
 	this.displayMessage = function(messageString, type){
-		type = type || "info";
+		type = type || "warning";
 
-		self.activeMessageType(type);
-		self.activeMessage(messageString);
+		$.growl[type]({ message: messageString });
+
+		//self.activeMessageType(type);
+		//self.activeMessage(messageString);
 	}
 
 	ko.bindingHandlers.showMessage = {
@@ -1238,7 +1301,7 @@ $(document).ready(function(){
 	gameViewModel = new Games();
 	gameViewModel.initObservables();
 	ko.applyBindings(gameViewModel);
-	gameViewModel.initOverviewDataStore();
+	gameViewModel.init();
 
 	//Initialize correct tab based on hash
 	window.location.hash = window.location.hash || "home";

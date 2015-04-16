@@ -22,6 +22,12 @@
 		
 		<!-- Bootstrap Datepicker -->
 		<link href="css/bootstrap-datepicker.min.css" rel="stylesheet">
+
+		<!-- Styles for jQuery tag editor -->
+		<link href="css/jquery.tag-editor.css" rel="stylesheet">
+
+		<!-- jQuery Growl -->
+		<link href="css/jquery.growl.css" rel="stylesheet">
 				
 		<!-- Theme customizations -->
 		<link href="css/custom.css" rel="stylesheet">
@@ -36,6 +42,7 @@
 	<!-- @TODOs
 		
 		NEW FEATURES
+		- Script to migrate existing simple fields to normalized tables
 		- To-play list management tab + mini-display on frontend (field: to_play_order)
 		- Add "dump" button to output a JSON version of all games (to make cross-system backup compares easier)
 		- Notes box on homepage
@@ -54,6 +61,8 @@
 		- Normalize storage of sources (+ source IDs) and platforms
 
 		GUI IMPROVEMENTS
+		- "Growl" errors
+		- Make editable tags more boot-strap-y (blue background + white text, rounded borders?)
 		- Prevent entire page from moving down when AJAX message is displayed
 		- Make single-game update success message unique from mass update
 		- Allow read-only fields to be filled out if empty, otherwise readonly
@@ -64,10 +73,12 @@
 		- Update/expand filter syntax instructions
 		- Add blue highlights to "pencil" edit button, and red highlighting to trash can icon
 		- Maybe add highlighting to select boxes? Possibly change "selected" color to blue?
+		- Show "no results found" if top-level search bar returns nothing
 
 		CODE IMPROVEMENTS
 		- Clean up tab display logic
 		- Give better names to functions involved in filtering process
+		- Make single/double quotes + camelcase/underscores consistent
 		
 		BUGS
 		- AJAX response message displays twice? (How to reproduce?)
@@ -215,12 +226,12 @@
 						</div>
 						<div class="form-group">
 							<label>Source</label>
-							<input type="text" class="form-control" placeholder="Source" data-bind="value: source, event: { keyup: $root.updateGameOnEnter }">
+							<input type="text" class="form-control source" placeholder="Source" data-bind="value: source, event: { keyup: $root.updateGameOnEnter }">
 							<div class="clear"></div>
 						</div>
 						<div class="form-group">
 							<label>Platform</label>
-							<input type="text" class="form-control" placeholder="Platform" data-bind="value: platform, event: { keyup: $root.updateGameOnEnter }">
+							<input type="text" class="form-control platform" placeholder="Platform" data-bind="value: platform, event: { keyup: $root.updateGameOnEnter }">
 							<div class="clear"></div>
 						</div>
 						<div class="form-group">
@@ -482,6 +493,9 @@
 		<!--<script src="js/typeahead-0.10.5.js"></script>-->
 		<script src="js/jquery-ui.min.js"></script>
 		<script src="js/bootstrap-datepicker.min.js"></script>
+		<script src="js/jquery.caret.min.js"></script>
+		<script src="js/jquery.tag-editor.min.js"></script>
+		<script src="js/jquery.growl.js"></script>
 
 		<!-- Other jQuery Plugins/Libraries -->
 
