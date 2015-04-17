@@ -1,5 +1,7 @@
 <?php
 
-class Source extends Model {
+require_once('EnhancedModel.php');
+
+class Source extends EnhancedModel {
 	
 }

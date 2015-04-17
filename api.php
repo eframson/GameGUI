@@ -1,8 +1,6 @@
 <?php
 	require_once('lib/idiorm.php');
 	require_once('lib/paris.php');
-	require_once('classes/CustomIdiorm.php');
-	require_once('classes/CustomModel.php');
 	require_once('classes/GameEntity.php');
 	require_once('classes/Platform.php');
 	require_once('classes/Source.php');
@@ -73,6 +71,7 @@
 
 				$data = array();
 				foreach($results as $idx => $result){
+					$result->after_load();
 					$data["games"][] = $result->as_array();
 				}
 
@@ -85,9 +84,7 @@
 	}
 
 	function gameTest(){
-		$game = Model::factory('GameEntity')->where('id', 1)->find_one();
-		//$game->sources(2);
-		$game->platforms(array(1,2,3));
+		echo "done";
 	}
 	
 	function addGame(){
@@ -104,6 +101,10 @@
 				foreach ($gameData as $prop => $value) {
 					if($prop == "id"){
 						continue;
+					}
+
+					if($value == ''){
+						$value = null;
 					}
 
 					$game->$prop = $value;
@@ -161,9 +162,7 @@
 	}
 	
 	function updateGame(){
-		die("testing");
 		$gameData = getRequestBody();
-		//print_r($gameData);
 
 		if($gameData == null || count($gameData) == 0){
 			showResponse("fail", array(), "No data received");
@@ -209,7 +208,7 @@
     						. ":" . ($date_parts["second"] ? $date_parts["second"] : "00");
 
 						}
-						if($value == "<DELETE>"){
+						if($value == "<DELETE>" || $value == ''){
 							$value = null;
 						}
 						$game->$prop = $value;
@@ -232,7 +231,7 @@
 	function mergeGames(){
 
 		$gameData = getRequestBody();
-		//print_r($gameData);
+		error_log(print_r($gameData,true));
 
 		if($gameData == null || count($gameData) == 0){
 			showResponse("fail", array(), "No data received");
@@ -339,6 +338,7 @@
 
 		$data = array();
 		foreach($results as $idx => $obj){
+			$obj->after_load();
 			$data[] = $obj->as_array();
 		}
 

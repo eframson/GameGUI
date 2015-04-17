@@ -1,6 +1,8 @@
 <?php
 
-abstract class ManyToMany extends CustomModel {
+require_once('EnhancedModel.php');
+
+abstract class ManyToMany extends EnhancedModel {
 
 	protected function _manyToManyField($class_name, $ids_to_set = array(), $extra_fields_to_set = array(), $join_class_base = "GameEntity", $join_class_base_id = null){
 
@@ -55,6 +57,10 @@ abstract class ManyToMany extends CustomModel {
 			return $this->has_many_through($class_name)->find_many();
 		}
 
+	}
+
+	public function after_load(){
+		//Should be implemented in a child class
 	}
 
 }

@@ -23,8 +23,8 @@
 		<!-- Bootstrap Datepicker -->
 		<link href="css/bootstrap-datepicker.min.css" rel="stylesheet">
 
-		<!-- Styles for jQuery tag editor -->
-		<link href="css/jquery.tag-editor.css" rel="stylesheet">
+		<!-- Select2 -->
+		<link href="css/select2.min.css" rel="stylesheet">
 
 		<!-- jQuery Growl -->
 		<link href="css/jquery.growl.css" rel="stylesheet">
@@ -42,13 +42,10 @@
 	<!-- @TODOs
 		
 		NEW FEATURES
-		- Script to migrate existing simple fields to normalized tables
 		- To-play list management tab + mini-display on frontend (field: to_play_order)
 		- Add "dump" button to output a JSON version of all games (to make cross-system backup compares easier)
 		- Notes box on homepage
-		- Use Select2s for source/platform entry
 		- Preferences tab/UI (# per page, etc.)
-		- Dynamic syntax highlighting for filter queries
 		- Show a user-friendly string translation of the filter string
 			IDEA:
 				ALL of the following must be true:
@@ -57,28 +54,31 @@
 				AT LEAST ONE of the following must be true:
 					- playability_rating EQUALS 4
 		- Store page number separately for filtered vs non-filtered results (?)
-		- Allow for multiple AJAX messages in quick succession instead of immediately replacing the value of any currently displayed message
-		- Normalize storage of sources (+ source IDs) and platforms
 
 		GUI IMPROVEMENTS
-		- "Growl" errors
-		- Make editable tags more boot-strap-y (blue background + white text, rounded borders?)
+		- third_party_id is now in a different table; How do we display/allow for editing?
 		- Prevent entire page from moving down when AJAX message is displayed
 		- Make single-game update success message unique from mass update
 		- Allow read-only fields to be filled out if empty, otherwise readonly
-		- Re-apply filter on game data update?
 		- Show loader icon in homepage sections while content is loading
 		- Re-sort list on partially successful mass update
 		- Add loading indicator when mass update modal is submitted
 		- Update/expand filter syntax instructions
 		- Add blue highlights to "pencil" edit button, and red highlighting to trash can icon
-		- Maybe add highlighting to select boxes? Possibly change "selected" color to blue?
 		- Show "no results found" if top-level search bar returns nothing
+		- Come up with better system to see if we're still loading (use the ajax request counter)
+		- Make filtering work with new platform/source format
+		- Get datepicker working with created/updated dates
+		- Clear out mass-update array of data after successful submission?
 
 		CODE IMPROVEMENTS
 		- Clean up tab display logic
 		- Give better names to functions involved in filtering process
 		- Make single/double quotes + camelcase/underscores consistent
+		- Find better way of implementing PHP require_onces() (don't use assumed DOCUMENT_ROOT path)
+		- Don't use !important for select2 widths
+		- Put code to generate platforms_for_render + sources_for_render in one re-callable function
+		- See if select2 code can be put in a re-callable function
 		
 		BUGS
 		- AJAX response message displays twice? (How to reproduce?)
@@ -111,16 +111,15 @@
 			        <h4 class="modal-title">Mass Update</h4>
 			    </div>
 				<div class="modal-body">
-					<div class="ajax-notice" data-bind="css: $root.messageClass, showMessage: $root.activeMessage()"></div>
 					<form role="form-horizontal" data-bind="with: massUpdateData">
 						<div class="form-group">
-							<label for="source">Source</label>
-							<input type="text" class="form-control" placeholder="Source" data-bind="value: source, event: { keyup: $root.massUpdateOnEnter }">
+							<label>Source</label>
+							<select class="form-control source" data-bind="options: $root.sourcesDataStore, optionsText: 'name', optionsValue: 'id', selectedOptions: sources" multiple="multiple"></select>
 							<div class="clear"></div>
 						</div>
 						<div class="form-group">
-							<label for="platform">Platform</label>
-							<input type="text" class="form-control" placeholder="Platform" data-bind="value: platform, event: { keyup: $root.massUpdateOnEnter }">
+							<label>Platform</label>
+							<select class="form-control platform" data-bind="options: $root.platformsDataStore, optionsText: 'name', optionsValue: 'id', selectedOptions: platforms" multiple="multiple"></select>
 							<div class="clear"></div>
 						</div>
 						<div class="form-group">
@@ -171,7 +170,6 @@
 		        <h4 class="modal-title">Create New Game</h4>
 		      </div>
 		      <div class="modal-body">
-				<div class="ajax-notice" data-bind="css: $root.messageClass, showMessage: $root.activeMessage()"></div>
 		        <form role="form-horizontal">
 						<div class="form-group">
 							<label for="title">Title</label>
@@ -179,13 +177,13 @@
 							<div class="clear"></div>
 						</div>
 						<div class="form-group">
-							<label for="source">Source</label>
-							<input type="text" class="form-control" placeholder="Source" data-bind="value: source, event: { keyup: $root.createGameOnEnter }">
+							<label>Source</label>
+							<select class="form-control source" data-bind="options: $root.sourcesDataStore, optionsText: 'name', optionsValue: 'id', selectedOptions: sources" multiple="multiple"></select>
 							<div class="clear"></div>
 						</div>
 						<div class="form-group">
-							<label for="platform">Platform</label>
-							<input type="text" class="form-control" placeholder="Platform" data-bind="value: platform, event: { keyup: $root.createGameOnEnter }">
+							<label>Platform</label>
+							<select class="form-control platform" data-bind="options: $root.platformsDataStore, optionsText: 'name', optionsValue: 'id', selectedOptions: platforms" multiple="multiple"></select>
 							<div class="clear"></div>
 						</div>
 						<div class="form-group">
@@ -212,7 +210,6 @@
 			        <h4 class="modal-title">Edit Game</h4>
 		      	</div>
 		      	<div class="modal-body">
-		      		<div class="ajax-notice" data-bind="css: $root.messageClass, showMessage: $root.activeMessage()"></div>
 					<form role="form-horizontal">
 						<div class="form-group">
 							<label>Id</label>
@@ -226,12 +223,12 @@
 						</div>
 						<div class="form-group">
 							<label>Source</label>
-							<input type="text" class="form-control source" placeholder="Source" data-bind="value: source, event: { keyup: $root.updateGameOnEnter }">
+							<select class="form-control source" data-bind="options: $root.sourcesDataStore, optionsText: 'name', optionsValue: 'id', selectedOptions: sources" multiple="multiple"></select>
 							<div class="clear"></div>
 						</div>
 						<div class="form-group">
 							<label>Platform</label>
-							<input type="text" class="form-control platform" placeholder="Platform" data-bind="value: platform, event: { keyup: $root.updateGameOnEnter }">
+							<select class="form-control platform" data-bind="options: $root.platformsDataStore, optionsText: 'name', optionsValue: 'id', selectedOptions: platforms" multiple="multiple"></select>
 							<div class="clear"></div>
 						</div>
 						<div class="form-group">
@@ -337,7 +334,6 @@
 			    </div>
 				<form id="massUpdateValues">
 					<div class="modal-body">
-						<div class="ajax-notice" data-bind="css: $root.messageClass, showMessage: $root.activeMessage()"></div>
 						<p>Choose what field values the resulting merged game will have:</p>
 							<div data-bind="foreach: $root.massMergeFields()">
 								<div class="merge-field">
@@ -350,7 +346,15 @@
 									<!-- /ko -->
 									<div data-bind="visible: showFillIn == true">
 										<input class="merge-fill-in" type="radio" data-bind="attr: { name: name, id: name + '-other' } , value: name + '-other'"/>
-										<input type="text" class="form-control merge-fill-in" placeholder="Other" data-bind='attr: { name: name + "-other" }, click: $root.selectPrecedingRadioButton'/>
+										<!-- ko if: name != 'sources' && name != 'platforms' -->
+											<input type="text" class="form-control merge-fill-in" placeholder="Other" data-bind='attr: { name: name + "-other" }, click: $root.selectPrecedingRadioButton'/>
+										<!-- /ko -->
+										<!-- ko if: name == 'platforms' -->
+											<select class="form-control platform" data-bind="attr: { name: name + '-other' }, options: $root.platformsDataStore, optionsText: 'name', optionsValue: 'id'" multiple="multiple"></select>
+										<!-- /ko -->
+										<!-- ko if: name == 'sources' -->
+											<select class="form-control source" data-bind="attr: { name: name + '-other' }, options: $root.sourcesDataStore, optionsText: 'name', optionsValue: 'id'" multiple="multiple"></select>
+										<!-- /ko -->
 										<div class="clear"></div>
 									</div>
 								</div>
@@ -371,8 +375,6 @@
 		<div class="container">
 
 		  <div class="starter-template">
-
-			<div class="ajax-notice" data-bind="css: messageClass, showMessage: activeMessage()"></div>
 
 			<div class="loading-indicator hidden" data-bind="visible: showLoading(), css: { hidden: false }" ><img src="img/ajax-loader.gif" /></div>
 
@@ -454,8 +456,8 @@
 					</div>
 					<div class="col-md-1" data-bind="text: id"></div>
 					<div class="col-md-5" data-bind="text: title"></div>
-					<div class="col-md-2" data-bind="text: source"></div>
-					<div class="col-md-2" data-bind="text: platform">Platform</div>
+					<div class="col-md-2" data-bind="text: sources_for_render"></div>
+					<div class="col-md-2" data-bind="text: platforms_for_render"></div>
 					<div class="col-md-1"><input type="checkbox" data-bind="checked: selected, click: $root.updateSelected "></div>
 				</div>
 				<!-- /ko -->
@@ -494,7 +496,7 @@
 		<script src="js/jquery-ui.min.js"></script>
 		<script src="js/bootstrap-datepicker.min.js"></script>
 		<script src="js/jquery.caret.min.js"></script>
-		<script src="js/jquery.tag-editor.min.js"></script>
+		<script src="js/select2.min.js"></script>
 		<script src="js/jquery.growl.js"></script>
 
 		<!-- Other jQuery Plugins/Libraries -->

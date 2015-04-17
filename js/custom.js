@@ -14,12 +14,14 @@ var Games = function() {
 		self.gameList = ko.observableArray();
 		self.overviewDataStore = ko.observableArray();
 		self.platformsDataStore = ko.observableArray();
+		self.platformsById = ko.observable();
 		self.sourcesDataStore = ko.observableArray();
+		self.sourcesById = ko.observable();
 		self.showLoading = ko.observable(1);
 		self.allSelected = ko.observable(0);
 		self.massUpdateData = ko.observable({
-			platform: undefined,
-			source: undefined,
+			platforms: Array(),
+			sources: Array(),
 			date_created: undefined,
 			has_played: undefined,
 			has_finished: undefined,
@@ -142,6 +144,9 @@ var Games = function() {
 		}, self);
 	}
 
+	this.mostRecentFilterTerm = "";
+	this.triggerPlatformsUpdate = false;
+	this.triggerSourcesUpdate = false;
 	this.columnsInOrder = Array();
 	this.modalIsShown = false;
 	this.filterNullTerm = "NULL";
@@ -213,13 +218,36 @@ var Games = function() {
 					$.each(response.getData().games, function(idx, elem){
 						elem.selected = false;
 						elem = ko.mapping.fromJS(elem);
+
+						elem.platforms_for_render = ko.computed(function(){
+							if(self.platformsById()){
+								var platforms_for_render = $.map(elem.platforms(),function(platform_id){
+									return self.platformsById()[platform_id];
+								});
+								return platforms_for_render.join(", ");
+							}else{
+								return "Loading...";
+							}
+						});
+
+						elem.sources_for_render = ko.computed(function(){
+							if(self.sourcesById()){
+								var sources_for_render = $.map(elem.sources(),function(source_id){
+									return self.sourcesById()[source_id];
+								});
+								return sources_for_render.join(", ");
+							}else{
+								return "Loading...";
+							}
+						});
+
 						response.getData().games[idx] = elem;
 					});
 					self.overviewDataStore(response.getData().games);
 
 					self.columnsInOrder = Object.keys(response.getData().games[0]);
 					self.columnsInOrder = self.columnsInOrder.filter(function(val, idx){
-						if(val == "selected" || val == "__ko_mapping__"){
+						if(val == "selected" || val == "__ko_mapping__" || val == "platforms_for_render" || val == "sources_for_render"){
 							return false;
 						}
 						return true;
@@ -246,6 +274,13 @@ var Games = function() {
 
 				if(response.isSuccess()){
 					self.platformsDataStore(response.getData().platforms);
+					platformsIndexObj = {};
+
+					for(i=0; i < response.getData().platforms.length; i++){
+						platformsIndexObj[response.getData().platforms[i].id] = response.getData().platforms[i].name;
+					}
+					self.platformsById(platformsIndexObj);
+
 				}else{
 					self.mostRecentAjaxFailure("Could not retrieve list of platforms: " + response.getErrorMsg());
 				}
@@ -265,6 +300,13 @@ var Games = function() {
 
 				if(response.isSuccess()){
 					self.sourcesDataStore(response.getData().sources);
+					sourcesIndexObj = {};
+
+					for(i=0; i < response.getData().sources.length; i++){
+						sourcesIndexObj[response.getData().sources[i].id] = response.getData().sources[i].name;
+					}
+					self.sourcesById(sourcesIndexObj);
+
 				}else{
 					self.mostRecentAjaxFailure("Could not retrieve list of sources: " + response.getErrorMsg());
 				}
@@ -289,6 +331,38 @@ var Games = function() {
 					var elem = response.getData().games[0];
 					elem.selected = false;
 					var game = ko.mapping.fromJS(elem);
+
+					if(self.triggerPlatformsUpdate){
+						self.initPlatforms();
+						self.triggerPlatformsUpdate = false;
+					}
+
+					if(self.triggerSourcesUpdate){
+						self.initSources();
+						self.triggerSourcesUpdate = false;
+					}
+
+					game.platforms_for_render = ko.computed(function(){
+						if(self.platformsById()){
+							var platforms_for_render = $.map(game.platforms(),function(platform_id){
+								return self.platformsById()[platform_id];
+							});
+							return platforms_for_render.join(", ");
+						}else{
+							return "Loading...";
+						}
+					});
+
+					game.sources_for_render = ko.computed(function(){
+						if(self.sourcesById()){
+							var sources_for_render = $.map(game.sources(),function(source_id){
+								return self.sourcesById()[source_id];
+							});
+							return sources_for_render.join(", ");
+						}else{
+							return "Loading...";
+						}
+					});
 
 					self.addGameToLocalObjects(game);
 					self.applySortingToDataStore();
@@ -411,9 +485,20 @@ var Games = function() {
 			dataType: "json",
 			data: postData,
 			success: function(response, textStatus, jqXHR){
+				console.log(response);
 				response = new Response(response);
 
 				if(response.getData() && response.getData().games){
+
+					if(self.triggerPlatformsUpdate){
+						self.initPlatforms();
+						self.triggerPlatformsUpdate = false;
+					}
+
+					if(self.triggerSourcesUpdate){
+						self.initSources();
+						self.triggerSourcesUpdate = false;
+					}
 					
 					$.each(response.getData().games, function(idx, val){
 
@@ -438,6 +523,7 @@ var Games = function() {
 
 					self.hideModal();
 					self.mostRecentAjaxSuccess("All games updated successfully");
+					self.applyFiltering({}, {}, self.mostRecentFilterTerm);
 					self.applySortingToDataStore();
 
 				}else{
@@ -469,7 +555,7 @@ var Games = function() {
 	this.massMerge = function(viewModel, event){
 
 		var elem = event.target,
-			$elem = $(elem)
+			$elem = $(elem),
 			form = $elem.parents("form"),
 			formData = form.serializeArray(),
 			submitFields = Array(),
@@ -478,7 +564,16 @@ var Games = function() {
 
 		submitFields = formData.filter(function(elem, idx){
 			if(elem.name.match(/-other$/)){
-				otherFields[elem.name] = elem.value;
+				if( otherFields.hasOwnProperty(elem.name) ){
+
+					if( otherFields[elem.name].constructor !== Array ){
+						otherFields[elem.name] = Array(otherFields[elem.name]);
+					}
+					otherFields[elem.name].push(elem.value);
+
+				}else{
+					otherFields[elem.name] = elem.value;
+				}
 				return false;
 			}
 			return true;
@@ -487,6 +582,9 @@ var Games = function() {
 		for(i=0; i < submitFields.length; i++){
 			if(submitFields[i].value.match(/-other$/)){
 				submitFields[i].value = otherFields[submitFields[i].value];
+			}else if( submitFields[i].value.match(/^ARRAY/) ){
+				submitFields[i].value = submitFields[i].value.replace("ARRAY","");
+				submitFields[i].value = submitFields[i].value.split(",");
 			}
 			submitFields[i].value = (submitFields[i].value == "NULL") ? undefined : submitFields[i].value ;
 
@@ -525,6 +623,28 @@ var Games = function() {
 							}else{
 								val.selected = false;
 								var game = ko.mapping.fromJS( $.extend(self.createNewEmptyGame(), val));
+
+								game.platforms_for_render = ko.computed(function(){
+									if(self.platformsById()){
+										var platforms_for_render = $.map(game.platforms(),function(platform_id){
+											return self.platformsById()[platform_id];
+										});
+										return platforms_for_render.join(", ");
+									}else{
+										return "Loading...";
+									}
+								});
+
+								game.sources_for_render = ko.computed(function(){
+									if(self.sourcesById()){
+										var sources_for_render = $.map(game.sources(),function(source_id){
+											return self.sourcesById()[source_id];
+										});
+										return sources_for_render.join(", ");
+									}else{
+										return "Loading...";
+									}
+								});
 
 								self.addGameToLocalObjects(game);
 							}
@@ -691,11 +811,35 @@ var Games = function() {
 			$.each(fieldValues, function(gameId, valueOption){
 				//These will also be the same thing for now
 				if(valueOption && valueOption != ''){
-					mergeField.options.push( {
-						value: valueOption,
-						label: valueOption,
-						id : fieldName + "-" + gameId,
-					} );
+					if(fieldName == "sources"){
+
+						var sources_for_render = $.map(valueOption,function(source_id){
+							return self.sourcesById()[source_id];
+						});
+
+						mergeField.options.push( {
+							value: "ARRAY" + valueOption,
+							label: sources_for_render.join(", "),
+							id : fieldName + "-" + gameId,
+						} );
+					}else if(fieldName == "platforms"){
+
+						var platforms_for_render = $.map(valueOption,function(platform_id){
+							return self.platformsById()[platform_id];
+						});
+
+						mergeField.options.push( {
+							value: "ARRAY" + valueOption,
+							label: platforms_for_render.join(", "),
+							id : fieldName + "-" + gameId,
+						} );
+					}else {
+						mergeField.options.push( {
+							value: valueOption,
+							label: (fieldName == "id") ? valueOption + " (" + dataByField["title"][gameId] + ")" : valueOption,
+							id : fieldName + "-" + gameId,
+						} );
+					}
 				}
 			});
 			if(fieldName != "id"){
@@ -728,15 +872,25 @@ var Games = function() {
 					ko.mapping.fromJS(response.getData().games[0], game);
 
 					self.currentGame(game);
-					$(".modal-content.editgame .form-group input.platform").tagEditor({
-						autocomplete: {
-							source: $.map(self.platformsDataStore(),function(platform){ return platform.name })
-						},
+
+					$(".modal-content.editgame .form-group select.source").select2({
+						tags: true,
+						tokenSeparators: [','],
+					}).on("change", function(e){
+					    var isNew = $(this).find('[data-select2-tag="true"]');
+					    if(isNew.length){
+					    	self.triggerSourcesUpdate = true;
+					    }
 					});
-					$(".modal-content.editgame .form-group input.source").tagEditor({
-						autocomplete: {
-							source: $.map(self.sourcesDataStore(),function(source){ return source.name })
-						},
+
+					$(".modal-content.editgame .form-group select.platform").select2({
+						tags: true,
+						tokenSeparators: [','],
+					}).on("change", function(e){
+					    var isNew = $(this).find('[data-select2-tag="true"]');
+					    if(isNew.length){
+					    	self.triggerPlatformsUpdate = true;
+					    }
 					});
 					self.showModal("editgame");
 
@@ -782,6 +936,74 @@ var Games = function() {
 
 		if(whichContent == "newgame"){
 			self.newGame(self.createNewEmptyGame());
+
+			$(".modal-content.newgame .form-group select.source").select2({
+				tags: true,
+				tokenSeparators: [','],
+			}).on("change", function(e){
+			    var isNew = $(this).find('[data-select2-tag="true"]');
+			    if(isNew.length){
+			    	self.triggerSourcesUpdate = true;
+			    }
+			});
+
+			$(".modal-content.newgame .form-group select.platform").select2({
+				tags: true,
+				tokenSeparators: [','],
+			}).on("change", function(e){
+			    var isNew = $(this).find('[data-select2-tag="true"]');
+			    if(isNew.length){
+			    	self.triggerPlatformsUpdate = true;
+			    }
+			});
+		}else if(whichContent == "massupdate"){
+
+			$(".modal-content.massupdate .form-group select.source").select2({
+				tags: true,
+				tokenSeparators: [','],
+			}).on("change", function(e){
+			    var isNew = $(this).find('[data-select2-tag="true"]');
+			    if(isNew.length){
+			    	self.triggerSourcesUpdate = true;
+			    }
+			});
+
+			$(".modal-content.massupdate .form-group select.platform").select2({
+				tags: true,
+				tokenSeparators: [','],
+			}).on("change", function(e){
+			    var isNew = $(this).find('[data-select2-tag="true"]');
+			    if(isNew.length){
+			    	self.triggerPlatformsUpdate = true;
+			    }
+			});
+
+		}else if(whichContent == "mass-merge"){
+
+			$(".modal-content.mass-merge select.source").select2({
+				tags: true,
+				tokenSeparators: [','],
+			}).on("change", function(e){
+			    var isNew = $(this).find('[data-select2-tag="true"]');
+			    if(isNew.length){
+			    	self.triggerSourcesUpdate = true;
+			    }
+			}).on("select2:open", function(e){
+			    self.selectPrecedingRadioButton({}, e);
+			});
+
+			$(".modal-content.mass-merge select.platform").select2({
+				tags: true,
+				tokenSeparators: [','],
+			}).on("change", function(e){
+			    var isNew = $(this).find('[data-select2-tag="true"]');
+			    if(isNew.length){
+			    	self.triggerPlatformsUpdate = true;
+			    }
+			}).on("select2:open", function(e){
+			    self.selectPrecedingRadioButton({}, e);
+			});
+
 		}
 
 		self.showModal(whichContent);
@@ -900,19 +1122,27 @@ var Games = function() {
 		}
 	}
 	
-	this.applyFiltering = function(viewModel, event){
-		var $elem = $(event.target);
+	this.applyFiltering = function(viewModel, event, forceWithTerm){
 
-		if( event.keyCode == 13 ){
-			var val = $elem.val();
-			if(val && val != ""){
-				self.filteredList(self.getFilteredDataStore(val));
-				self.listMode("filter");
-				self.currentPageNo(1);
-			}else{
-				self.filteredList(Array());
-				self.listMode("all");
+		var val;
+
+		if(forceWithTerm){
+			val = forceWithTerm;
+		}else if( event.keyCode == 13 ){
+			var $elem = $(event.target)
+			if( $elem.length ){
+				val = $elem.val();
+				this.mostRecentFilterTerm = val;
 			}
+		}
+
+		if(val && val != ""){
+			self.filteredList(self.getFilteredDataStore(self.mostRecentFilterTerm));
+			self.listMode("filter");
+			self.currentPageNo(1);
+		}else{
+			self.filteredList(Array());
+			self.listMode("all");
 		}
 	}
 	
@@ -1163,7 +1393,6 @@ var Games = function() {
 		var gameArray = ko.mapping.toJS(game);
 
 		if(matchData.matchField == 'ANY'){
-
 			checkFields = Object.keys(gameArray).filter(function(elem, idx){
 				if(elem != "id" && elem != "selected"){
 					return true;
@@ -1194,8 +1423,8 @@ var Games = function() {
 	this.createNewEmptyGame = function(){
 		return {
 				title: "",
-				source: "",
-				platform: "",
+				sources: Array(),
+				platforms: Array(),
 				has_played: 2,
 				source_id: "",
 		};
@@ -1225,17 +1454,17 @@ var Games = function() {
 	}
 
 	this.mostRecentAjaxFailure = function(messageString){
-		self.displayMessage(messageString, "error");
+		self.displayMessage(messageString, "error", "Oh no!", 8000);
 	}
 
 	this.mostRecentAjaxSuccess = function(messageString){
-		self.displayMessage(messageString, "notice");
+		self.displayMessage(messageString, "notice", "Success");
 	}
 
-	this.displayMessage = function(messageString, type){
+	this.displayMessage = function(messageString, type, growlHeader, duration){
 		type = type || "warning";
 
-		$.growl[type]({ message: messageString });
+		$.growl[type]({ message: messageString, title: growlHeader, duration: duration });
 
 		//self.activeMessageType(type);
 		//self.activeMessage(messageString);
