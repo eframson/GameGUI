@@ -157,6 +157,9 @@ var Games = function() {
 	this.operators = {
 		//"!=|=|>|<|=<|>=";
 		'=' : function(a, b){
+			if(a && a.constructor === Array){
+				return (a.indexOf(b) !== -1);
+			}
 			return (a == b);
 		},
 		'!=' : function(a, b){
@@ -180,21 +183,60 @@ var Games = function() {
 			if(b == undefined){
 				return false;
 			}
-
+			
 			if( a == undefined ){
 				a = "";
-			}else if(a.constructor !== String){
-				a = a.toString();
 			}
+			
+			if(a.constructor === Array){
+				for(i = 0; i < a.length; i++){
+					
+					if( a[i] == undefined ){
+						a[i] = "";
+					}else if(a[i].constructor !== String){
+						a[i] = a[i].toString();
+					}
+		
+					if( a[i].toLowerCase().indexOf(b.toLowerCase()) !== -1 ){
+						return true;
+					}
+				}
+				return false;
+			}else{
 
-			if( a.match( new RegExp(b, "i")) !== null ){
-				return true;
+				if(a.constructor !== String){
+					a = a.toString();
+				}
+	
+				if( a.match( new RegExp(b, "i")) !== null ){
+					return true;
+				}
+				return false;
 			}
-			return false;
 		},
 		'HAS' : function(a, b){
 			return self.operators["~="](a, b);
 		},
+	}
+	this.specialCompareLogicFields = {
+		sources: function(ids){
+			var nameArray = Array();
+			for(i=0; i < ids.length; i++){
+				nameArray.push( self.sourcesById()[ids[i]] );
+			}
+			return nameArray;
+		},
+		platforms: function(ids){
+			var nameArray = Array();
+			for(i=0; i < ids.length; i++){
+				nameArray.push( self.platformsById()[ids[i]] );
+			}
+			return nameArray;
+		}
+	}
+	this.conflateTerms = {
+		source: "sources",
+		platform: "platforms",
 	}
 
 	this.init = function(){
@@ -1136,14 +1178,17 @@ var Games = function() {
 			}
 		}
 
-		if(val && val != ""){
-			self.filteredList(self.getFilteredDataStore(self.mostRecentFilterTerm));
-			self.listMode("filter");
-			self.currentPageNo(1);
-		}else{
-			self.filteredList(Array());
-			self.listMode("all");
+		if(event.keyCode == 13 || forceWithTerm){
+			if(val && val != ""){
+				self.filteredList(self.getFilteredDataStore(self.mostRecentFilterTerm));
+				self.listMode("filter");
+				self.currentPageNo(1);
+			}else{
+				self.filteredList(Array());
+				self.listMode("all");
+			}			
 		}
+
 	}
 	
 	this.clearFilter = function(viewModel, event){
@@ -1409,8 +1454,18 @@ var Games = function() {
 		}
 
 		for(i=0; i < checkFields.length; i++){
-			if( self.operators[matchData.matchOp](gameArray[checkFields[i]], matchData.matchValue) ){
-				return true;
+			var fieldName = checkFields[i];
+			if(self.conflateTerms.hasOwnProperty(fieldName)){
+				fieldName = self.conflateTerms[fieldName];
+			}
+			if( self.specialCompareLogicFields.hasOwnProperty(fieldName) ){
+				if( self.operators[matchData.matchOp](self.specialCompareLogicFields[fieldName](gameArray[fieldName]), matchData.matchValue) ){
+					return true;
+				}
+			}else{
+				if( self.operators[matchData.matchOp](gameArray[checkFields[i]], matchData.matchValue) ){
+					return true;
+				}
 			}
 		}
 		return false;

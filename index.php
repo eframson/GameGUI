@@ -81,7 +81,9 @@
 		- See if select2 code can be put in a re-callable function
 		
 		BUGS
+		- Infinite loop on debug "special, yo" message?
 		- AJAX response message displays twice? (How to reproduce?)
+		- Filter changes when you backspace after searching?
 
 	-->
 	<body>
