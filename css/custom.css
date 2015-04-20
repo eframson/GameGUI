@@ -97,33 +97,47 @@ button:focus {
 	padding: 10px;
 }
 
-.home .home-section.recently-added h4{
+.home .home-section.recently-added h4,
+.home .home-section.to-play h4{
 	margin-top: 0px;
 	margin-bottom: 5px;
 	text-align: left;
 }
 
-.home .home-section.recently-added span{
+.home .home-section.recently-added span,
+.home .home-section.to-play span{
 	display: inline-block;
 }
 
 .home .home-section.recently-added span.title,
-.home .home-section.recently-added span.title-header{
+.home .home-section.recently-added span.title-header,
+.home .home-section.to-play span.title,
+.home .home-section.to-play span.title-header{
 	float: left;
 }
 
 .home .home-section.recently-added span.date,
-.home .home-section.recently-added span.date-header{
+.home .home-section.recently-added span.date-header,
+.home .home-section.to-play span.order,
+.home .home-section.to-play span.order-header{
 	float: right;
 }
 
 .home .home-section.recently-added span.title-header,
-.home .home-section.recently-added span.date-header{
+.home .home-section.to-play span.title-header,
+.home .home-section.recently-added span.date-header,
+.home .home-section.to-play span.order-header{
 	font-weight: bold;
 }
 
 .home .home-section.recently-added span.date-header{
 	margin-right: 54px;
+}
+
+.home .home-section.to-play span.order,
+.home .home-section.to-play span.order-header {
+	width: 132px;
+	text-align: left;
 }
 
 .all-games .table-meta div.pagination-controls {

@@ -20,6 +20,12 @@ class GameEntity extends ManyToMany {
 		}
 		$this->date_updated = $now->format("Y-m-d H:i:s");
 
+		//Eventually this should be hooked up, but for now we just don't want it to break
+		$third_party_ids = ($this->source_ids) ? $this->source_ids : $this->_add_to_array["source_ids"];
+		$this->orm->offsetUnset("source_ids");
+		//unset($this->_add_to_array["source_ids"]);
+		error_log(print_r($this,true));
+
 		foreach($this->platforms as &$platform_id){
 			//If we one of the "ids" isn't an ID, let's assume it's a new platform
 			if(!is_numeric($platform_id)){
@@ -66,6 +72,17 @@ class GameEntity extends ManyToMany {
 		}, $this->sources());
 		$this->_add_to_array["sources"] = $this->sources;
 
+		//This should be 100% functional, but the frontend can't handle it yet
+		/*$source_metas = $this->_hasManyField("GameEntitySource")->find_many();
+		$this->_add_to_array["source_ids"] = array_combine(
+			array_map(function($source_meta){
+				return $source_meta->source_id;
+			}, $source_metas),
+			array_map(function($source_meta){
+				return $source_meta->third_party_id;
+			}, $source_metas)
+		);*/
+
 		$this->platforms = array_map(function($platform){
 			return $platform->id;
 		}, $this->platforms());
@@ -73,7 +90,7 @@ class GameEntity extends ManyToMany {
 	}
 
 	public function sources($args = array()){
-		return $this->_manyToManyField("Source", $args);		
+		return $this->_manyToManyField("Source", $args);
 	}
 
 	public function platforms($args = array()){

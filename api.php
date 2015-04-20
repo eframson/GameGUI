@@ -231,7 +231,6 @@
 	function mergeGames(){
 
 		$gameData = getRequestBody();
-		error_log(print_r($gameData,true));
 
 		if($gameData == null || count($gameData) == 0){
 			showResponse("fail", array(), "No data received");

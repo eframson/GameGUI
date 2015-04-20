@@ -59,8 +59,10 @@ abstract class ManyToMany extends EnhancedModel {
 
 	}
 
-	public function after_load(){
-		//Should be implemented in a child class
+	protected function _hasManyField($class_name){
+
+		return $this->has_many($class_name);
+
 	}
 
 }

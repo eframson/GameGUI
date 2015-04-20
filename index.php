@@ -54,6 +54,7 @@
 				AT LEAST ONE of the following must be true:
 					- playability_rating EQUALS 4
 		- Store page number separately for filtered vs non-filtered results (?)
+		- Add UI for setting source-specific third party IDs (this is kind of an edge-ish case so I'm not worrying about it for now)
 
 		GUI IMPROVEMENTS
 		- third_party_id is now in a different table; How do we display/allow for editing?
@@ -273,6 +274,11 @@
 							<input type="text" class="form-control" placeholder="Notes" data-bind="value: notes, event: { keyup: $root.updateGameOnEnter }">
 							<div class="clear"></div>
 						</div>
+						<div class="form-group">
+							<label for="platform">To Play Order</label>
+							<input type="text" class="form-control" placeholder="To Play Order" data-bind="value: to_play_order, event: { keyup: $root.updateGameOnEnter }">
+							<div class="clear"></div>
+						</div>
 					</form>
 				</div>
 				<div class="modal-footer">
@@ -382,7 +388,21 @@
 
 			<div class="home" data-bind="visible: activeTab() == 'home'">
 				<div class="row">
-					<div class="home-section col-md-5">To-Play Summary (show top 5, date added to list, "add note" button)</div>
+					<div class="home-section col-md-5 to-play">
+						<h4>To-Play List</h4>
+						<div>
+							<span class="title-header">Title</span>
+							<span class="order-header">Order</span>
+							<div class="clear"></div>
+						</div>
+						<div data-bind="foreach: topFiveGamesToPlay">
+							<div>
+								<span class="title" data-bind="text: title"></span>
+								<span class="order" data-bind="text: to_play_order"></span>
+								<div class="clear"></div>
+							</div>
+						</div>
+					</div>
 					<div class="col-md-2"></div>
 					<div class="home-section col-md-5">Useful Controls (add game button, and...?)</div>
 				</div>

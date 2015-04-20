@@ -34,6 +34,7 @@ var Games = function() {
 		self.currentGameListSorting = ko.observable({ column: "title", dir: "asc"});
 		self.sortNullsLast = ko.observable(true);
 		self.activeRequests = ko.observable(0);
+		self.modalContentVisible = ko.observable(0);
 		self.listMode = ko.observable("all");
 		self.filteredList = ko.observableArray();
 
@@ -104,6 +105,22 @@ var Games = function() {
 			return gameListCopy.slice(0,5);
 		});
 
+		self.topFiveGamesToPlay = ko.computed(function(){
+			var gameListCopy = self.getFilteredDataStore("to_play_order IS NOT NULL");
+			
+			if(gameListCopy.length == 0){
+				gameListCopy.push({title: "No results found", to_play_order: ''});
+			}else{
+				gameListCopy.sort(function(left,right){
+					var leftField = left.to_play_order();
+					var rightField = right.to_play_order()
+					return leftField == rightField ? 0 : (leftField > rightField ? -1 : 1) ;
+				});
+			}
+
+			return gameListCopy.slice(0,5);
+		});
+
 		self.allSelected.subscribe(function(val){
 			if(val && val != 0){
 				self.selectedGames( ko.utils.arrayMap( self.gameList(), function(item){ return item.id; } ) );
@@ -151,7 +168,7 @@ var Games = function() {
 	this.modalIsShown = false;
 	this.filterNullTerm = "NULL";
 	this.filterEmptyTerm = "EMPTY";
-	this.validOperatorsRegEx = "!=|=|>|<|<=|>=|HAS|~=";
+	this.validOperatorsRegEx = "!=|=|>|<|<=|>=|HAS|~=|IS NOT";
 	this.orTermsRegEx = "OR|\\|\\|";
 	this.andTermsRegEx = "AND|&&";
 	this.operators = {
@@ -216,6 +233,9 @@ var Games = function() {
 		},
 		'HAS' : function(a, b){
 			return self.operators["~="](a, b);
+		},
+		'IS NOT' : function(a, b){
+			return self.operators["!="](a, b);
 		},
 	}
 	this.specialCompareLogicFields = {
@@ -736,7 +756,7 @@ var Games = function() {
 
 			response($.map(self.getFilteredDataStore("title HAS " + request.term + " OR source HAS " + request.term), function( game ){
 				return {
-					label: game.title() + " (" + game.source() + ")",
+					label: game.title() + " (" + game.sources_for_render() + ")",
 					value: game.id()
 				}
 			}));
@@ -773,7 +793,6 @@ var Games = function() {
 	});
 	
 	$('.search').click(function(event){
-		console.log("clicked");
 		var $this=$(this);
 		event.preventDefault();
 		if( self.searchTerm() ){
@@ -1439,7 +1458,7 @@ var Games = function() {
 
 		if(matchData.matchField == 'ANY'){
 			checkFields = Object.keys(gameArray).filter(function(elem, idx){
-				if(elem != "id" && elem != "selected"){
+				if(elem != "id" && elem != "selected" && !self.conflateTerms.hasOwnProperty(elem)){
 					return true;
 				}
 			});
@@ -1453,7 +1472,9 @@ var Games = function() {
 			matchData.matchValue = "";
 		}
 
-		for(i=0; i < checkFields.length; i++){
+		//Okay...apparently if I don't explicitly declare "i" here, it loops infinitely when "ANY" field is specified
+		var i;
+		for(i = 0; i < checkFields.length; i++){
 			var fieldName = checkFields[i];
 			if(self.conflateTerms.hasOwnProperty(fieldName)){
 				fieldName = self.conflateTerms[fieldName];
@@ -1482,6 +1503,7 @@ var Games = function() {
 				platforms: Array(),
 				has_played: 2,
 				source_id: "",
+				to_play_order: 0,
 		};
 	}
 
