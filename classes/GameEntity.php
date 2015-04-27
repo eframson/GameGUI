@@ -21,7 +21,7 @@ class GameEntity extends ManyToMany {
 		$this->date_updated = $now->format("Y-m-d H:i:s");
 
 		//Eventually this should be hooked up, but for now we just don't want it to break
-		$third_party_ids = ($this->source_ids) ? $this->source_ids : $this->_add_to_array["source_ids"];
+		$third_party_ids = ($this->source_ids) ? $this->source_ids : (array_key_exists("source_ids", $this->_add_to_array)) ? $this->_add_to_array["source_ids"] : null;
 		$this->orm->offsetUnset("source_ids");
 		//unset($this->_add_to_array["source_ids"]);
 		error_log(print_r($this,true));
@@ -53,7 +53,7 @@ class GameEntity extends ManyToMany {
 		$sources_to_add = $this->sources;
 		$platforms_to_add = $this->platforms;
 
-		parent::save();
+		$response = parent::save();
 
 		//Hook up our game + platform and game + source associations
 		$this->platforms($platforms_to_add);
@@ -62,7 +62,7 @@ class GameEntity extends ManyToMany {
 		//Update the object with the latest-and-greatest
 		$this->after_load();
 
-		return $this;
+		return $response;
 	}
 
 	public function after_load(){

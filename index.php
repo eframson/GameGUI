@@ -85,6 +85,7 @@
 		- Infinite loop on debug "special, yo" message?
 		- AJAX response message displays twice? (How to reproduce?)
 		- Filter changes when you backspace after searching?
+		- Tab-switching fields doesn't work for select2 fields
 
 	-->
 	<body>
