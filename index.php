@@ -82,8 +82,7 @@
 		- See if select2 code can be put in a re-callable function
 		
 		BUGS
-		- Infinite loop on debug "special, yo" message?
-		- AJAX response message displays twice? (How to reproduce?)
+		- Modal window does not hide properly when it is merely clicked-outside-of (rather than canceled or closed)
 		- Filter changes when you backspace after searching?
 		- Tab-switching fields doesn't work for select2 fields
 
