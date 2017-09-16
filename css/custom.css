@@ -74,7 +74,7 @@ button:focus {
 	margin-top: 8px;
 }
 
-.navbar-collapse #container {
+.navbar-collapse .search-results-container {
 	display: block;
 	position: relative;
 }
@@ -98,6 +98,8 @@ button:focus {
 }
 
 .home .home-section.recently-added h4,
+.home .home-section.unplayed-games h4,
+.home .home-section.incomplete-data h4,
 .home .home-section.to-play h4{
 	margin-top: 0px;
 	margin-bottom: 5px;
@@ -105,12 +107,18 @@ button:focus {
 }
 
 .home .home-section.recently-added span,
+.home .home-section.unplayed-games span,
+.home .home-section.incomplete-data span,
 .home .home-section.to-play span{
 	display: inline-block;
 }
 
 .home .home-section.recently-added span.title,
 .home .home-section.recently-added span.title-header,
+.home .home-section.unplayed-games span.title,
+.home .home-section.unplayed-games span.title-header,
+.home .home-section.incomplete-data span.title,
+.home .home-section.incomplete-data span.title-header,
 .home .home-section.to-play span.title,
 .home .home-section.to-play span.title-header{
 	float: left;
@@ -118,20 +126,37 @@ button:focus {
 
 .home .home-section.recently-added span.date,
 .home .home-section.recently-added span.date-header,
+.home .home-section.unplayed-games span.date,
+.home .home-section.unplayed-games span.date-header,
+.home .home-section.incomplete-data span.date,
+.home .home-section.incomplete-data span.date-header,
 .home .home-section.to-play span.order,
 .home .home-section.to-play span.order-header{
 	float: right;
 }
 
 .home .home-section.recently-added span.title-header,
+.home .home-section.unplayed-games span.title-header,
+.home .home-section.incomplete-data span.title-header,
 .home .home-section.to-play span.title-header,
 .home .home-section.recently-added span.date-header,
+.home .home-section.unplayed-games span.date-header,
+.home .home-section.incomplete-data span.date-header,
 .home .home-section.to-play span.order-header{
 	font-weight: bold;
 }
 
-.home .home-section.recently-added span.date-header{
+.home .home-section.recently-added span.date-header,
+.home .home-section.unplayed-games span.date-header,
+.home .home-section.incomplete-data span.date-header{
 	margin-right: 54px;
+}
+
+.home .home-section.recently-added span.title,
+.home .home-section.unplayed-games span.title,
+.home .home-section.incomplete-data span.title,
+.home .home-section.to-play span.title{
+	cursor: pointer;
 }
 
 .home .home-section.to-play span.order,
@@ -274,11 +299,19 @@ button:focus {
 }
 
 .all-games .row.single-game {
-	
+	height: 41px;
 }
 
 .all-games div.row.single-game:hover {
 	background-color: #eeeeea;
+}
+
+.all-games .row.single-game .ctrl-icons .glyphicon {
+	margin-right: 10px;
+}
+
+.all-games .row.single-game .ctrl-icons .glyphicon:last-child {
+	margin-right: 0px;
 }
 
 .all-games {
@@ -306,6 +339,7 @@ button:focus {
     border-radius:5px;
     border:2px solid #555;
     outline: 0;
+    margin-top: 0px;
 }
 .all-games .row input[type='checkbox']:checked {
     /*background: #abd;*/

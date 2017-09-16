@@ -80,7 +80,7 @@ DROP TABLE IF EXISTS `platform`;
 /*!40101 SET character_set_client = utf8 */;
 CREATE TABLE `platform` (
   `id` int(11) NOT NULL AUTO_INCREMENT,
-  `name` varchar(45) CHARACTER SET latin1 NOT NULL,
+  `name` varchar(45) CHARACTER SET utf8 NOT NULL,
   PRIMARY KEY (`id`),
   UNIQUE KEY `name_UNIQUE` (`name`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8;
@@ -95,7 +95,7 @@ DROP TABLE IF EXISTS `source`;
 /*!40101 SET character_set_client = utf8 */;
 CREATE TABLE `source` (
   `id` int(11) NOT NULL AUTO_INCREMENT,
-  `name` varchar(45) CHARACTER SET latin1 NOT NULL,
+  `name` varchar(45) CHARACTER SET utf8 NOT NULL,
   PRIMARY KEY (`id`),
   UNIQUE KEY `name_UNIQUE` (`name`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8;

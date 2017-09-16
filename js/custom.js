@@ -34,13 +34,14 @@ var Games = function() {
 		self.currentGameListSorting = ko.observable({ column: "title", dir: "asc"});
 		self.sortNullsLast = ko.observable(true);
 		self.activeRequests = ko.observable(0);
-		self.modalContentVisible = ko.observable(0);
 		self.listMode = ko.observable("all");
 		self.filteredList = ko.observableArray();
 
-		self.currentGameCancelData = Array();
 		self.activeMessageType = ko.observable("info");
 		self.activeMessage = ko.observable("");
+
+		self.currentGameCancelData = Array();
+		self.currentModalContent = "";
 
 		self.currentPage = ko.computed(function(){
 			if(self.activeTab() == "all"){
@@ -114,6 +115,40 @@ var Games = function() {
 				gameListCopy.sort(function(left,right){
 					var leftField = left.to_play_order();
 					var rightField = right.to_play_order()
+					return leftField == rightField ? 0 : (leftField > rightField ? -1 : 1) ;
+				});
+			}
+
+			return gameListCopy.slice(0,5);
+		});
+
+		self.unplayedGames = ko.computed(function(){
+			var gameListCopy = self.getFilteredDataStore("has_played = 0");
+			
+			if(gameListCopy.length == 0){
+				gameListCopy.push({title: "No results found", date_created: ''});
+			}else{
+				gameListCopy.sort(function(left,right){
+					var leftField = new Date(left.date_created());
+					var rightField = new Date(right.date_created());
+					return leftField == rightField ? 0 : (leftField > rightField ? -1 : 1) ;
+				});
+			}
+
+			return gameListCopy.slice(0,5);
+		});
+
+		self.incompleteDataGames = ko.computed(function(){
+			var gameListOne = self.getFilteredDataStore("has_played = 2");
+			var gameListTwo = self.getFilteredDataStore("has_played = 1 AND has_finished = 2");
+			var gameListCopy = self._removeDuplicatesFromArray(gameListOne.concat(gameListTwo));
+			
+			if(gameListCopy.length == 0){
+				gameListCopy.push({title: "No results found", date_created: ''});
+			}else{
+				gameListCopy.sort(function(left,right){
+					var leftField = new Date(left.date_created());
+					var rightField = new Date(right.date_created());
 					return leftField == rightField ? 0 : (leftField > rightField ? -1 : 1) ;
 				});
 			}
@@ -428,7 +463,7 @@ var Games = function() {
 
 					self.addGameToLocalObjects(game);
 					self.applySortingToDataStore();
-					self.hideModal();
+					self.hideModalIfShown();
 					self.mostRecentAjaxSuccess("Game " + elem.id + " created successfully");
 					self.newGame(self.createNewEmptyGame());
 
@@ -465,9 +500,7 @@ var Games = function() {
 					
 					if(response.isSuccess()){
 
-						if (self.modalIsShown == true){
-							self.hideModal();
-						}
+						self.hideModalIfShown();
 						self.removeGameFromLocalObjects(game);
 						self.mostRecentAjaxSuccess("Game deleted successfully");
 
@@ -583,7 +616,7 @@ var Games = function() {
 				
 				if(response.isSuccess()){
 
-					self.hideModal();
+					self.hideModalIfShown();
 					self.mostRecentAjaxSuccess("All games updated successfully");
 					self.applyFiltering({}, {}, self.mostRecentFilterTerm);
 					self.applySortingToDataStore();
@@ -722,7 +755,7 @@ var Games = function() {
 				
 				if(response.isSuccess()){
 
-					self.hideModal();
+					self.hideModalIfShown();
 					self.mostRecentAjaxSuccess("All games merged successfully");
 
 				}else{
@@ -734,87 +767,9 @@ var Games = function() {
 		});
 	}
 	
-	$('.search').autocomplete({
-		source: function( request, response ){
-			/*$.getJSON(
-				'api.php/games/search/' + request.term,
-				function(data){
-					if (data.results) {
-						response(
-							$.map(data.results, function( item ){
-								return {
-									label: item.title + " (" + item.source + ")",
-									value: item.id
-								}
-							})
-						);
-					}else{
-						response([{ label: "No Results Found", value: "#" }]);
-					}
-				}
-			);*/
-
-			response($.map(self.getFilteredDataStore("title HAS " + request.term + " OR source HAS " + request.term), function( game ){
-				return {
-					label: game.title() + " (" + game.sources_for_render() + ")",
-					value: game.id()
-				}
-			}));
-		},
-		select: function(event, ui){
-			event.preventDefault();
-			if(ui.item.value != "#"){
-				$('.search').val(ui.item.label);
-				var game = self.getGameById(ui.item.value);
-				self.editGameFromList(game);
-			}
-		},
-		focus: function(event, ui){
-			event.preventDefault();
-			//$('.search').val(ui.item.label);
-		},
-		search: function(event, ui){
-			self.searchTerm($('.search').val());
-		},
-		position: { my: "left top", at: "left bottom", collision: "none" },
-		appendTo: "#container"
-	});
-
-	$('.search').keydown(function(event){
-		var $this=$(this);
-		if(event.keyCode == 40){ //Down arrow
-			event.preventDefault();
-			if( self.searchTerm() ){
-				$this.parents(".navbar-nav").siblings("#container").children(".ui-autocomplete:hidden").show();
-			}else{
-				//$this.autocomplete("search");
-			}
-		}
-	});
-	
-	$('.search').click(function(event){
-		var $this=$(this);
-		event.preventDefault();
-		if( self.searchTerm() ){
-			console.log("display the shit");
-			$this.parents(".navbar-nav").siblings("#container").children(".ui-autocomplete:hidden").show();
-		}else{
-			//$this.autocomplete("search");
-		}
-	});
-	
 	this.clearSearch = function(viewModel, event){
 		self.searchTerm(undefined);
 		$('.search').val(undefined);
-	}
-
-	this.cancelCreateGame = function(game, event){
-		self.newGame(self.createNewEmptyGame());
-		self.hideModal();
-	}
-
-	this.cancelMassUpdate = function(game, event){
-		self.hideModal();
 	}
 
 	this.showHome = function(){
@@ -960,11 +915,6 @@ var Games = function() {
 		});
 
 	}
-
-	this.cancelUpdateGame = function(game, event){
-		ko.mapping.fromJS(self.currentGameCancelData, game);
-		self.hideModal();
-	}
 	
 	this.updateGameOnEnter = function(game, event){
 		
@@ -1017,6 +967,8 @@ var Games = function() {
 			    	self.triggerPlatformsUpdate = true;
 			    }
 			});
+
+			self.applyAutocompleteToElement($('.modal-content.newgame .form-group .search'));
 		}else if(whichContent == "massupdate"){
 
 			$(".modal-content.massupdate .form-group select.source").select2({
@@ -1071,7 +1023,7 @@ var Games = function() {
 	}
 
 	this.showModal = function(whichContent){
-		self.modalIsShown = true;
+		self.currentModalContent = whichContent;
 		$('#myModal .modal-content.' + whichContent).show();
 		$('#myModal').modal('show');
 		/*$(".datepicker").datepicker({
@@ -1079,10 +1031,11 @@ var Games = function() {
 		});*/
 	}
 
-	this.hideModal = function(viewModel, event){
-		self.modalIsShown = false;
-		$('#myModal').modal('hide');
-		$('#myModal .modal-content').hide();
+	//This just calls the default modal "hide", if it's currently open
+	this.hideModalIfShown = function(viewModel, event){
+		if(self.modalIsShown == true){
+			$('#myModal').modal('hide');
+		}
 	}
 
 	this.clearSelection = function(viewModel, event){
@@ -1364,6 +1317,22 @@ var Games = function() {
 		$.ajax(ajaxOpts);
 	}
 
+	this._removeDuplicatesFromArray = function(arrayWithDuplicates, uniqueFieldToEvaluate){
+		uniqueFieldToEvaluate = uniqueFieldToEvaluate || "id";
+		var uniqueTracker = {};
+		var arrayWithoutDuplicates = [];
+
+		$.each(arrayWithDuplicates, function(idx, elem){
+			var uniqueValue = elem[uniqueFieldToEvaluate]();
+			if(uniqueTracker[uniqueValue] == undefined){
+				uniqueTracker[uniqueValue] = 1;
+				arrayWithoutDuplicates.push(elem);
+			}
+		});
+
+		return arrayWithoutDuplicates;
+	}
+
 	//Expects a termString like "bar", "foo=bar", "foo > bar", etc.
 	this._getMatchingObjectFromTermString = function(termString){
 
@@ -1496,6 +1465,16 @@ var Games = function() {
 		//Hmmmm....
 	}
 
+	this.loadAndEditGameById = function(id){
+		var game = self.getGameById(id);
+		self.cancelCreateGame();
+		self.editGameFromList(game);
+	}
+
+	this.doEditGame = function(game, event){
+		self.loadAndEditGameById(game.id());
+	}
+
 	this.createNewEmptyGame = function(){
 		return {
 				title: "",
@@ -1513,6 +1492,78 @@ var Games = function() {
 		});
 		//Should only be one anyway, but just to be sure...
 		return results[0];
+	}
+
+	this.applyAutocompleteToElement = function($search_elem){
+
+		$search_elem.autocomplete({
+			source: function( request, response ){
+				/*$.getJSON(
+					'api.php/games/search/' + request.term,
+					function(data){
+						if (data.results) {
+							response(
+								$.map(data.results, function( item ){
+									return {
+										label: item.title + " (" + item.source + ")",
+										value: item.id
+									}
+								})
+							);
+						}else{
+							response([{ label: "No Results Found", value: "#" }]);
+						}
+					}
+				);*/
+
+				response($.map(self.getFilteredDataStore("title HAS " + request.term + " OR source HAS " + request.term), function( game ){
+					return {
+						label: game.title() + " (" + game.sources_for_render() + ")",
+						value: game.id()
+					}
+				}));
+			},
+			select: function(event, ui){
+				event.preventDefault();
+				if(ui.item.value != "#"){
+					$search_elem.val(ui.item.label);
+					self.loadAndEditGameById(ui.item.value);
+				}
+			},
+			focus: function(event, ui){
+				event.preventDefault();
+				//$('.search').val(ui.item.label);
+			},
+			search: function(event, ui){
+				self.searchTerm($search_elem.val());
+			},
+			position: { my: "left top", at: "left bottom", collision: "none" },
+			//appendTo: ".search-results-container"
+		});
+
+		$search_elem.keydown(function(event){
+			var $this=$(this);
+			if(event.keyCode == 40){ //Down arrow
+				event.preventDefault();
+				if( self.searchTerm() ){
+					$search_elem.siblings(".search-results-container").children(".ui-autocomplete:hidden").show();
+				}else{
+					//$this.autocomplete("search");
+				}
+			}
+		});
+		
+		$search_elem.click(function(event){
+			var $this=$(this);
+			event.preventDefault();
+			if( self.searchTerm() ){
+				console.log("display the shit");
+				$search_elem.siblings(".search-results-container").children(".ui-autocomplete:hidden").show();
+			}else{
+				//$this.autocomplete("search");
+			}
+		});
+
 	}
 
 	this.debugLogDataStore = function(idx_start, idx_end){
@@ -1613,6 +1664,26 @@ $(document).ready(function(){
 	window.location.hash = window.location.hash || "home";
 	var hash = window.location.hash;
 	gameViewModel.activeTab(hash.replace(/^#/, ''));
+
+	gameViewModel.applyAutocompleteToElement($('.search'));
+
+	$("#myModal").on('hide.bs.modal', function(){
+		gameViewModel.modalIsShown = false;
+		//Hide extra stuff
+		$('#myModal .modal-content').hide();
+
+		//Clear out things that might be currently displayed
+			//Is there a smarter way to do this? Probably...maybe check what content is currently being displayed or whatever
+		if(gameViewModel.currentModalContent == "newgame"){
+			gameViewModel.newGame(gameViewModel.createNewEmptyGame());
+		}else if(gameViewModel.currentModalContent == "editgame"){
+			ko.mapping.fromJS(gameViewModel.currentGameCancelData, gameViewModel.currentGame());
+		}
+	});
+
+	$("#myModal").on('show.bs.modal', function(){
+		gameViewModel.modalIsShown = true;
+	});
 	
 });
 

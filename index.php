@@ -94,12 +94,18 @@
 			  <ul class="nav navbar-nav left">
 				<li data-bind="css: { active: activeTab() == 'home' }" ><a href="#home" data-bind="click: setActiveTab">Home</a></li>
 				<li data-bind="css: { active: activeTab() == 'all' }" ><a href="#all" data-bind="click: setActiveTab">Show All</a></li>
-			  </ul>
+			  </ul><!--/.navbar-nav .left-->
 			  <ul class="nav navbar-nav right">
-				<li class="pull-right search-container"><input autocomplete="off" placeholder="Search" title="Search" class="form-control search" type="text"><a class="clear-icon" href="#" data-bind="event: {focus: preventFocus}, click: clearSearch"><span class="glyphicon glyphicon-remove"></span></a></li>
+				<li class="pull-right search-container">
+					<input autocomplete="off" placeholder="Search" title="Search" class="form-control search" type="text"/>
+					<a class="clear-icon" href="#" data-bind="event: {focus: preventFocus}, click: clearSearch">
+						<span class="glyphicon glyphicon-remove"></span>
+					</a>
+					<div class="search-results-container"></div>
+				</li>
 				<li class="new-game-button-container pull-right"><button type="button" data-target="newgame" data-bind="click: triggerModal" class="form-control btn btn-primary">New Game</button></li>
-			  </ul>
-			  <div id="container"></div>
+			  </ul><!--/.navbar-nav .right-->
+
 			</div><!--/.nav-collapse -->
 		  </div>
 		</div>
@@ -110,7 +116,7 @@
 
 		    <div class="modal-content massupdate">
 			    <div class="modal-header">
-			        <button type="button" class="close" data-bind="click: hideModal"><span aria-hidden="true">&times;</span><span class="sr-only">Close</span></button>
+			        <button type="button" class="close" data-bind="click: hideModalIfShown"><span aria-hidden="true">&times;</span><span class="sr-only">Close</span></button>
 			        <h4 class="modal-title">Mass Update</h4>
 			    </div>
 				<div class="modal-body">
@@ -162,22 +168,23 @@
 					</form>
 				</div>
 				<div class="modal-footer">
-					<button type="button" class="btn btn-default" data-bind="click: cancelMassUpdate">Cancel</button>
+					<button type="button" class="btn btn-default" data-bind="click: hideModalIfShown">Cancel</button>
 					<button type="button" class="btn btn-primary" data-bind="click: massUpdate, text: 'Update ' + selectedGames().length + ' game(s)'"></button>
 				</div>
 		    </div>
 
 			<div data-bind="with: newGame" class="modal-content newgame">
 		      <div class="modal-header">
-		        <button type="button" class="close" data-bind="click: $root.hideModal"><span aria-hidden="true">&times;</span><span class="sr-only">Close</span></button>
+		        <button type="button" class="close" data-bind="click: $root.hideModalIfShown"><span aria-hidden="true">&times;</span><span class="sr-only">Close</span></button>
 		        <h4 class="modal-title">Create New Game</h4>
 		      </div>
 		      <div class="modal-body">
 		        <form role="form-horizontal">
-						<div class="form-group">
+						<div class="form-group search-container">
 							<label for="title">Title</label>
-							<input type="text" class="form-control" placeholder="Title" data-bind="value: title, event: { keyup: $root.createGameOnEnter }">
+							<input type="text" class="form-control search" placeholder="Title" data-bind="value: title, event: { keyup: $root.createGameOnEnter }">
 							<div class="clear"></div>
+							<div class="search-results-container"></div>
 						</div>
 						<div class="form-group">
 							<label>Source</label>
@@ -202,14 +209,14 @@
 					</form>
 		      </div>
 		      <div class="modal-footer">
-		        <button type="button" class="btn btn-default" data-bind="click: $root.cancelCreateGame">Cancel</button>
+		        <button type="button" class="btn btn-default" data-bind="click: $root.hideModalIfShown">Cancel</button>
 		        <button type="button" class="btn btn-primary" data-bind="click: $root.createGame">Create Game</button>
 		      </div>
 		    </div>
 
 			<div data-bind="with: currentGame" class="current-game modal-content editgame">
 				<div class="modal-header">
-			        <button type="button" class="close" data-bind="click: $root.hideModal"><span aria-hidden="true">&times;</span><span class="sr-only">Close</span></button>
+			        <button type="button" class="close" data-bind="click: $root.hideModalIfShown"><span aria-hidden="true">&times;</span><span class="sr-only">Close</span></button>
 			        <h4 class="modal-title">Edit Game</h4>
 		      	</div>
 		      	<div class="modal-body">
@@ -283,14 +290,14 @@
 				</div>
 				<div class="modal-footer">
 					<button type="button" class="btn btn-danger" data-bind="click: $root.deleteGame">Delete</button>
-			        <button type="button" class="btn btn-default" data-bind="click: $root.cancelUpdateGame">Cancel</button>
+			        <button type="button" class="btn btn-default" data-bind="click: $root.hideModalIfShown">Cancel</button>
 			        <button type="button" class="btn btn-primary" data-bind="click: $root.updateGame">Update</button>
 		      </div>
 			</div>
 
 			<div class="modal-content filter-instructions">
 			    <div class="modal-header">
-			        <button type="button" class="close" data-bind="click: hideModal"><span aria-hidden="true">&times;</span><span class="sr-only">Close</span></button>
+			        <button type="button" class="close" data-bind="click: hideModalIfShown"><span aria-hidden="true">&times;</span><span class="sr-only">Close</span></button>
 			        <h4 class="modal-title">How To Use Filters</h4>
 			    </div>
 				<div class="modal-body">
@@ -337,7 +344,7 @@
 
 			<div class="modal-content mass-merge">
 			    <div class="modal-header">
-			        <button type="button" class="close" data-bind="click: hideModal"><span aria-hidden="true">&times;</span><span class="sr-only">Close</span></button>
+			        <button type="button" class="close" data-bind="click: hideModalIfShown"><span aria-hidden="true">&times;</span><span class="sr-only">Close</span></button>
 			        <h4 class="modal-title">Merge Games</h4>
 			    </div>
 				<form id="massUpdateValues">
@@ -369,7 +376,7 @@
 							</div>
 					</div>
 					<div class="modal-footer">
-						<button type="button" class="btn btn-default" data-bind="click: hideModal">Cancel</button>
+						<button type="button" class="btn btn-default" data-bind="click: hideModalIfShown">Cancel</button>
 						<button type="button" class="btn btn-primary" data-bind="click: massMerge, text: 'Merge ' + selectedGames().length + ' game(s)'"></button>
 					</div>
 				</form>
@@ -397,14 +404,28 @@
 						</div>
 						<div data-bind="foreach: topFiveGamesToPlay">
 							<div>
-								<span class="title" data-bind="text: title"></span>
+								<span class="title" data-bind="text: title, click: $root.doEditGame"></span>
 								<span class="order" data-bind="text: to_play_order"></span>
 								<div class="clear"></div>
 							</div>
 						</div>
 					</div>
 					<div class="col-md-2"></div>
-					<div class="home-section col-md-5">Useful Controls (add game button, and...?)</div>
+					<div class="home-section col-md-5 unplayed-games">
+						<h4>Unplayed Games</h4>
+						<div>
+							<span class="title-header">Title</span>
+							<span class="date-header">Date Added</span>
+							<div class="clear"></div>
+						</div>
+						<div data-bind="foreach: unplayedGames">
+							<div>
+								<span class="title" data-bind="text: title, click: $root.doEditGame"></span>
+								<span class="date" data-bind="text: date_created"></span>
+								<div class="clear"></div>
+							</div>
+						</div>
+					</div>
 				</div>
 				<div class="row">
 					<div class="home-section col-md-5 recently-added">
@@ -416,14 +437,28 @@
 						</div>
 						<div data-bind="foreach: recentlyAddedGames">
 							<div>
-								<span class="title" data-bind="text: title"></span>
+								<span class="title" data-bind="text: title, click: $root.doEditGame"></span>
 								<span class="date" data-bind="text: date_created"></span>
 								<div class="clear"></div>
 							</div>
 						</div>
 					</div>
 					<div class="col-md-2"></div>
-					<div class="home-section col-md-5">Bottom right (lol, what content goes here?)</div>
+					<div class="home-section col-md-5 incomplete-data">
+						<h4>Incomplete Information</h4>
+						<div>
+							<span class="title-header">Title</span>
+							<span class="date-header">Date Added</span>
+							<div class="clear"></div>
+						</div>
+						<div data-bind="foreach: incompleteDataGames">
+							<div>
+								<span class="title" data-bind="text: title, click: $root.doEditGame"></span>
+								<span class="date" data-bind="text: date_created"></span>
+								<div class="clear"></div>
+							</div>
+						</div>
+					</div>
 				</div>
 			</div>
 
@@ -472,7 +507,7 @@
 
 				<!-- ko foreach: currentPage -->
 				<div class="row single-game">
-					<div class="col-md-1">
+					<div class="col-md-1 ctrl-icons">
 						<span data-bind="click: $root.deleteGame" class="delete-ctrl glyphicon glyphicon-trash"></span>
 						<span data-bind="click: $root.editGameFromList" class="edit-ctrl glyphicon glyphicon-pencil"></span>
 					</div>
