@@ -1467,7 +1467,6 @@ var Games = function() {
 
 	this.loadAndEditGameById = function(id){
 		var game = self.getGameById(id);
-		self.cancelCreateGame();
 		self.editGameFromList(game);
 	}
 
